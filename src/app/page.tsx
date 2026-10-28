@@ -42,7 +42,7 @@ export default function Home() {
       <button onClick={exportData} style={{ ...inputStyle, width: 'auto', cursor: 'pointer' }}>⬇ Exportar respaldo JSON</button>
     </header>
     <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 12 }}>
-      {([['Consumo CFE', format(totals.kwh) + ' kWh'], ['Pagos CFE', money(totals.mxn)], ['Cargas Tesla', format(totals.teslaKwh) + ' kWh'], ['Costo Tesla estimado', money(totals.teslaCost)]] as const).map(([label, value, icon]) =>
+      {([['Consumo CFE', format(totals.kwh) + ' kWh', <HousePlug size={22} color='#4ade80' />], ['Pagos CFE', money(totals.mxn), <ReceiptText size={22} color='#4ade80' />], ['Cargas Tesla', format(totals.teslaKwh) + ' kWh', <BatteryCharging size={22} color='#4ade80' />], ['Costo Tesla estimado', money(totals.teslaCost), <Zap size={22} color='#4ade80' />]] as const).map(([label, value, icon]) =>
         <div key={label} style={panel}><div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', color: '#a3b7a6' }}><span>{label}</span>{icon}</div><h2 style={{ marginBottom: 0 }}>{value}</h2></div>)}
     </section>
     <p style={{ color: '#a3b7a6', fontSize: 13 }}>Totales de los registros capturados, no lecturas en vivo. Las cargas en casa ya forman parte del consumo de CFE; no se suman nuevamente.</p>

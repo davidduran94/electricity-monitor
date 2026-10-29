@@ -1,53 +1,37 @@
-/**
- * One-time Tesla Fleet partner registration.
- * Run locally with TESLA_CLIENT_ID and TESLA_CLIENT_SECRET in your environment.
- * Requires Node.js 20+. Never commit credentials or private keys.
- */
-const domain = process.env.TESLA_PARTNER_DOMAIN || 'electricity-monitor-smoky.vercel.app';
-const audience = process.env.TESLA_FLEET_API_BASE_URL || 'https://fleet-api.prd.na.vn.cloud.tesla.com';
-const clientId = process.env.TESLA_CLIENT_ID;
-const { createPrivateKey, createPublicKey } = await import('node:crypto');
-const privatePem = process.env.TESLA_PARTNER_PRIVATE_KEY?.replace(/\\n/g, '\n');
-if (!privatePem) {
-  console.error('TESLA_PARTNER_PRIVATE_KEY is missing. Generate a new P-256 key pair and publish its public key before registration.');
-  process.exit(1);
+/** Run with credentials in the environment. Never print tokens or private keys. */
+import { createPrivateKey, createPublicKey } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import { config, requestPartnerToken, hostedKey } from './tesla-partner.mjs';
+
+try {
+  const settings = config();
+  const token = await requestPartnerToken(settings);
+  console.log('Tesla partner token: OK (token not displayed).');
+  if (!process.argv.includes('--check-token')) {
+    const publicKey = await hostedKey(settings.domain);
+    console.log('Tesla public key: accessible anonymously, P-256.');
+    if (!process.argv.includes('--check')) {
+      const publishedPem = await readFile(new URL('../public/.well-known/appspecific/com.tesla.3p.public-key.pem', import.meta.url), 'utf8');
+      const expectedPublicKey = createPublicKey(publishedPem).export({ type: 'spki', format: 'pem' });
+      if (publicKey !== expectedPublicKey) throw new Error('Hosted public key differs from the reviewed repository key. Registration cancelled.');
+      // Registration sends only the public key domain. The private key stays with its owner.
+      const privatePem = process.env.TESLA_PARTNER_PRIVATE_KEY?.replace(/\\n/g, '\n');
+      if (privatePem) {
+        let privateKey;
+        try { privateKey = createPrivateKey(privatePem); } catch { throw new Error('Invalid partner private key.'); }
+        if (privateKey.asymmetricKeyType !== 'ec' || privateKey.asymmetricKeyDetails?.namedCurve !== 'prime256v1') throw new Error('Partner private key must use P-256.');
+        if (createPublicKey(privateKey).export({ type: 'spki', format: 'pem' }) !== publicKey) throw new Error('Hosted public key does not match the existing private key.');
+      }
+      const response = await fetch(new URL('/api/1/partner_accounts', settings.audience), {
+        method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain: settings.domain }), redirect: 'error', signal: AbortSignal.timeout(12000)
+      });
+      if (!response.ok) throw new Error(`Tesla partner registration HTTP ${response.status}. Check domain and allowed origins in Tesla Developer.`);
+      console.log('Tesla partner registration: OK.');
+    }
+  }
+} catch (error) {
+  // All explicit errors contain only allowlisted diagnostics, never provider bodies.
+  console.error(error instanceof Error && error.name === 'Error' ? error.message : 'Tesla request failed (network or timeout).');
+  process.exitCode = 1;
 }
-let expectedPublicKey;
-try { expectedPublicKey = createPublicKey(createPrivateKey(privatePem)).export({type:'spki',format:'pem'}).trim(); }
-catch { console.error('Invalid P-256 private key.'); process.exit(1); }
-const clientSecret = process.env.TESLA_CLIENT_SECRET;
-if (!clientId || !clientSecret) {
-  console.error('Set TESLA_CLIENT_ID and TESLA_CLIENT_SECRET in your local environment.');
-  process.exit(1);
-}
-const tokenResponse = await fetch('https://fleet-auth.prd.vn.cloud.tesla.com/oauth2/v3/token', {
-  method: 'POST',
-  headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-  body: new URLSearchParams({grant_type:'client_credentials',client_id:clientId,client_secret:clientSecret,audience,scope:'openid vehicle_device_data vehicle_charging_cmds'})
-});
-if (!tokenResponse.ok) {
-  console.error('Partner token request failed:', tokenResponse.status);
-  process.exit(1);
-}
-const {access_token} = await tokenResponse.json();
-const keyResponse = await fetch('https://' + domain + '/.well-known/appspecific/com.tesla.3p.public-key.pem');
-if (!keyResponse.ok) {
-  console.error('Public key is not accessible:', keyResponse.status);
-  process.exit(1);
-}
-const hostedPublicKey = (await keyResponse.text()).trim();
-if (hostedPublicKey !== expectedPublicKey) {
-  console.error('Hosted public key does not match TESLA_PARTNER_PRIVATE_KEY. Registration cancelled.');
-  process.exit(1);
-}
-const response = await fetch(new URL('/api/1/partner_accounts', audience), {
-  method:'POST',
-  headers:{Authorization:'Bearer ' + access_token,'Content-Type':'application/json'},
-  body:JSON.stringify({domain})
-});
-console.log('Tesla partner registration status:', response.status);
-if (!response.ok) {
-  console.error('Registration failed; inspect Tesla developer dashboard.');
-  process.exit(1);
-}
-console.log('Partner registration completed for', domain);

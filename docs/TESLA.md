@@ -1,16 +1,36 @@
-# Integración Tesla Fleet API (fase inicial)
+# Integración Tesla Fleet API
 
-Esta fase añade endpoints de solo lectura. No envía comandos ni despierta el vehículo.
+El dashboard usa OAuth Authorization Code, cookies HttpOnly cifradas con AES-256-GCM y renovación de tokens. Solicita `openid offline_access vehicle_device_data`: no envía comandos ni despierta el vehículo. Los registros manuales de energía y costo se conservan en el navegador y no se sustituyen por datos del vehículo.
 
 ## Configuración
-1. Registra una aplicación en el portal oficial Tesla Developer y completa los requisitos de Fleet API.
-2. Autoriza tu propia cuenta mediante el flujo OAuth de Tesla y obtén un access token con permiso de datos del vehículo.
-3. Configura `TESLA_ACCESS_TOKEN`, `TESLA_VIN` y opcionalmente `TESLA_FLEET_API_BASE_URL` como secretos del proyecto en Vercel.
-4. Redeploy y consulta `/api/tesla/status` y `/api/tesla/charge`.
 
-**Importante:** El token temporal caduca; la integración de producción debe implementar OAuth Authorization Code + PKCE, refresh tokens cifrados y sesiones autenticadas. Estos endpoints no deben exponerse públicamente con un token real: añade autenticación de usuario antes de habilitar la integración. No guardes tokens en Git ni en localStorage.
+- En Vercel: `TESLA_CLIENT_ID`, `TESLA_CLIENT_SECRET` y `TESLA_SESSION_SECRET` (64 caracteres hexadecimales aleatorios). Los tres ya existen en producción y preview.
+- En Tesla Developer: origen `https://electricity-monitor-smoky.vercel.app` y callback `https://electricity-monitor-smoky.vercel.app/login`.
+- El origen Fleet API de Norteamérica es `https://fleet-api.prd.na.vn.cloud.tesla.com`, sin barra final.
+- La clave P-256 existente debe responder HTTP 200 sin autenticación en `/.well-known/appspecific/com.tesla.3p.public-key.pem`. No reemplazar la pareja de claves existente.
 
-Los datos de carga de Tesla no equivalen a la energía facturada por CFE. No se realizan cálculos de costo automático.
+## Diagnóstico y registro
 
-## Seguridad
-Los endpoints no devuelven credenciales ni VIN completo. Antes de configurar un token real en producción, protege las rutas con autenticación; el código inicial es un scaffold de desarrollo.
+Ejecutar con las credenciales en el entorno, sin pegarlas en comandos ni compartirlas en chats:
+
+```sh
+node scripts/register-tesla-partner.mjs --check-token
+node scripts/register-tesla-partner.mjs --check
+node scripts/register-tesla-partner.mjs
+node --test scripts/tesla-partner.test.mjs
+```
+
+`--check-token` solamente obtiene y descarta un Partner Token; `--check` además valida el acceso anónimo y la curva de la clave. Sin opciones, registra el dominio después de comparar la clave alojada con la revisada en este repositorio. Si existe `TESLA_PARTNER_PRIVATE_KEY` en el entorno, verifica también la pareja. La clave privada no se envía a Tesla y no hace falta recuperarla para registrar el dominio.
+
+El scope es opcional para el Partner Token; el registro no solicita permisos de comandos. Los errores muestran HTTP y un código OAuth de una lista permitida, nunca el cuerpo completo de Tesla, tokens ni claves.
+
+Después del registro, el propietario debe usar **Conectar Tesla** y aprobar el consentimiento en Tesla. El Partner Token sirve para registrar la aplicación; el token OAuth del usuario sirve para consultar su Model 3. No son intercambiables.
+
+## Verificación del 29 de octubre de 2026
+
+- Repositorio base: `4a23d177f48b6ef94cbc9ad2d56f9ba546cf6051`.
+- Ambas solicitudes del Partner Token (con los scopes originales y sin scope) se obtuvieron correctamente usando los secretos existentes de preview en Vercel. El HTTP 400 anterior no se reprodujo; no hay evidencia para atribuirlo a los scopes.
+- La URL pública de la clave respondió HTTP 302 hacia Vercel SSO: la protección `all` impide el acceso anónimo de Tesla. Requiere ajustar la protección antes de registrar el dominio.
+- Los logs históricos del HTTP 400 exceden la retención del plan. No atribuir una causa definitiva a ese fallo sin reproducirlo.
+
+Los datos Tesla no equivalen a energía facturada por CFE; no se calcula costo automáticamente. La sesión del usuario debe autorizar cada consulta y los endpoints no deben devolver tokens o VIN completos.

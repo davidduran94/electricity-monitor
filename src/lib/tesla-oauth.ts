@@ -3,7 +3,7 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 
 export const callbackUrl = 'https://electricity-monitor-smoky.vercel.app/login';
 export const audience = process.env.TESLA_FLEET_API_BASE_URL || 'https://fleet-api.prd.na.vn.cloud.tesla.com';
-export const scopes = 'openid offline_access vehicle_device_data vehicle_charging_cmds';
+export const scopes = 'openid offline_access vehicle_device_data';
 export const secureCookie = { httpOnly: true, secure: true, sameSite: 'lax' as const, path: '/' };
 
 function key() {

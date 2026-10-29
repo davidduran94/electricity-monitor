@@ -6,6 +6,15 @@
 const domain = process.env.TESLA_PARTNER_DOMAIN || 'electricity-monitor-smoky.vercel.app';
 const audience = process.env.TESLA_FLEET_API_BASE_URL || 'https://fleet-api.prd.na.vn.cloud.tesla.com';
 const clientId = process.env.TESLA_CLIENT_ID;
+const { createPrivateKey, createPublicKey } = await import('node:crypto');
+const privatePem = process.env.TESLA_PARTNER_PRIVATE_KEY?.replace(/\\n/g, '\n');
+if (!privatePem) {
+  console.error('TESLA_PARTNER_PRIVATE_KEY is missing. Generate a new P-256 key pair and publish its public key before registration.');
+  process.exit(1);
+}
+let expectedPublicKey;
+try { expectedPublicKey = createPublicKey(createPrivateKey(privatePem)).export({type:'spki',format:'pem'}).trim(); }
+catch { console.error('Invalid P-256 private key.'); process.exit(1); }
 const clientSecret = process.env.TESLA_CLIENT_SECRET;
 if (!clientId || !clientSecret) {
   console.error('Set TESLA_CLIENT_ID and TESLA_CLIENT_SECRET in your local environment.');
@@ -24,6 +33,11 @@ const {access_token} = await tokenResponse.json();
 const keyResponse = await fetch('https://' + domain + '/.well-known/appspecific/com.tesla.3p.public-key.pem');
 if (!keyResponse.ok) {
   console.error('Public key is not accessible:', keyResponse.status);
+  process.exit(1);
+}
+const hostedPublicKey = (await keyResponse.text()).trim();
+if (hostedPublicKey !== expectedPublicKey) {
+  console.error('Hosted public key does not match TESLA_PARTNER_PRIVATE_KEY. Registration cancelled.');
   process.exit(1);
 }
 const response = await fetch(new URL('/api/1/partner_accounts', audience), {

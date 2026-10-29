@@ -15,6 +15,7 @@ export default function Home() {
   const [ready, setReady] = useState(false);
   const [tesla, setTesla] = useState<{connected:boolean;expired?:boolean}>({connected:false});
   const [teslaStatus, setTeslaStatus] = useState('');
+  const [teslaChecking, setTeslaChecking] = useState(true);
   const [teslaVehicles, setTeslaVehicles] = useState<Array<{displayName:string;state?:string;vinLast4?:string}>>([]);
   useEffect(() => {
     let active = true;
@@ -28,6 +29,7 @@ export default function Home() {
         }
         if (!active) return;
         setTesla(session);
+        if (!session.connected) setTeslaStatus('No hay una sesión Tesla activa en este navegador. Si ya autorizaste, la sesión no se guardó o la autorización falló.');
         if (session.connected && !session.expired) {
           res = await fetch('/api/tesla/status', {cache:'no-store'});
           const data = await res.json();
@@ -39,6 +41,7 @@ export default function Home() {
           }
         }
       } catch { if (active) setTeslaStatus('No se pudo consultar la conexión Tesla.'); }
+      finally { if (active) setTeslaChecking(false); }
     }
     loadTesla();
     return () => { active = false; };
@@ -78,7 +81,9 @@ export default function Home() {
     <section style={{ ...panel, marginBottom: 20 }}>
       <h2 style={{display:'flex',alignItems:'center',gap:10}}><CarFront color='#4ade80' /> Conexión Tesla Fleet</h2>
       <p>{tesla.connected && !tesla.expired ? 'Cuenta Tesla conectada' : 'Conecta tu Tesla para consultar información de tu vehículo.'}</p>
+      {teslaChecking && <p role="status">Comprobando sesión Tesla...</p>}
       {teslaStatus && <p role="status">{teslaStatus}</p>}
+      <p style={{fontSize:13,color:'#a3b7a6'}}>Estado de autorización: {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tesla') === 'authorization_failed' ? 'Tesla regresó, pero no se completó el intercambio de credenciales.' : typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tesla') === 'connected' ? 'Tesla regresó y el servidor intentó guardar la sesión.' : 'Sin resultado de autorización en la URL.'}</p>
       {teslaVehicles.map((v,i) => <p key={i}>{v.displayName} · {v.state || 'Estado desconocido'} · VIN terminado en {v.vinLast4 || '—'}</p>)}
       {tesla.connected && !tesla.expired
         ? <button type="button" onClick={disconnectTesla} style={{...inputStyle,width:'auto',cursor:'pointer'}}>Desconectar Tesla</button>

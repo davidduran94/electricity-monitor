@@ -83,7 +83,7 @@ export default function Home() {
       <p>{tesla.connected && !tesla.expired ? 'Cuenta Tesla conectada' : 'Conecta tu Tesla para consultar información de tu vehículo.'}</p>
       {teslaChecking && <p role="status">Comprobando sesión Tesla...</p>}
       {teslaStatus && <p role="status">{teslaStatus}</p>}
-      <p style={{fontSize:13,color:'#a3b7a6'}}>Estado de autorización: {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tesla') === 'authorization_failed' ? 'Tesla regresó, pero no se completó el intercambio de credenciales.' : typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tesla') === 'connected' ? 'Tesla regresó y el servidor intentó guardar la sesión.' : 'Sin resultado de autorización en la URL.'}</p>
+      <p style={{fontSize:13,color:'#a3b7a6'}}>Estado de autorización: {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tesla') === 'authorization_failed' ? `La autorización falló (motivo: ${new URLSearchParams(window.location.search).get('reason') || 'no especificado'}).` : typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tesla') === 'connected' ? 'Tesla regresó y el servidor intentó guardar la sesión.' : 'Sin resultado de autorización en la URL.'}</p>
       {teslaVehicles.map((v,i) => <p key={i}>{v.displayName} · {v.state || 'Estado desconocido'} · VIN terminado en {v.vinLast4 || '—'}</p>)}
       {tesla.connected && !tesla.expired
         ? <button type="button" onClick={disconnectTesla} style={{...inputStyle,width:'auto',cursor:'pointer'}}>Desconectar Tesla</button>

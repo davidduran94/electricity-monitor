@@ -32,8 +32,10 @@ export default function Home() {
           res = await fetch('/api/tesla/status', {cache:'no-store'});
           const data = await res.json();
           if (active) {
-            if (res.ok) setTeslaVehicles(data.vehicles || []);
-            else setTeslaStatus(data.message || 'No se pudo consultar Tesla.');
+            if (res.ok) {
+              setTeslaVehicles(data.vehicles || []);
+              setTeslaStatus((data.vehicles || []).length === 0 ? 'La cuenta está conectada, pero Tesla no devolvió vehículos. Comprueba que el Model 3 esté vinculado a esta cuenta y que Fleet API tenga acceso.' : '');
+            } else setTeslaStatus(data.message || 'No se pudo consultar Tesla.');
           }
         }
       } catch { if (active) setTeslaStatus('No se pudo consultar la conexión Tesla.'); }

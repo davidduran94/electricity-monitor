@@ -8,8 +8,8 @@ export async function GET() {
   if (tokens.expires_at <= Date.now()) return NextResponse.json({ connected: false, message: 'La sesión ha caducado. Vuelve a conectar Tesla.' }, { status: 401 });
   try {
     const result = await teslaRequest('/api/1/vehicles', tokens.access_token);
-    const vehicles = (result.response || []).map((v: { display_name?: string; state?: string; id_s?: string; vin?: string }) => ({
-      displayName: v.display_name || 'Tesla', state: v.state, id: v.id_s, vinLast4: v.vin?.slice(-4)
+    const vehicles = (result.response || []).map((v: { display_name?: string; state?: string; id_s?: string; id?: number; vin?: string }) => ({
+      displayName: v.display_name || 'Tesla', state: v.state, id: String(v.id_s ?? v.id), vinLast4: v.vin?.slice(-4)
     }));
     return NextResponse.json({ connected: true, vehicles }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {

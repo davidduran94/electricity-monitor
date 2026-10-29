@@ -34,3 +34,19 @@ Después del registro, el propietario debe usar **Conectar Tesla** y aprobar el 
 - Los logs históricos del HTTP 400 exceden la retención del plan. No atribuir una causa definitiva a ese fallo sin reproducirlo.
 
 Los datos Tesla no equivalen a energía facturada por CFE; no se calcula costo automáticamente. La sesión del usuario debe autorizar cada consulta y los endpoints no deben devolver tokens o VIN completos.
+
+## Vista de cargas
+
+La sección «Última lectura de carga» consulta `vehicle_data_cached` al pulsar el botón. Presenta el timestamp del coche, energía añadida en la sesión reportada, batería, potencia y autonomía convertida de millas a kilómetros. No hace polling, no despierta el coche y no convierte una lectura en un registro histórico.
+
+«Últimas cargas de Tesla» consulta `GET /api/1/dx/charging/history`, filtrado por el VIN que el servidor resuelve a partir de un vehículo de la sesión. Devuelve páginas de 20 eventos y únicamente campos de presentación. Las fechas, energía, importe o moneda ausentes se muestran como no disponibles. Las unidades de energía no explícitas no se adivinan.
+
+El permiso `vehicle_charging_cmds` se solicita solo mediante «Autorizar historial en Tesla». Tesla incluye el historial y los controles en ese mismo permiso; la aplicación no implementa comandos. Puede ser necesario habilitar el permiso en Tesla Developer y volver a consentir. Los tokens actuales siguen funcionando para la lectura de datos del vehículo.
+
+El historial que devuelva Tesla no se presenta como completo ni se mezcla con las cargas manuales en casa o los totales CFE. No se implementa `charging/sessions`, reservado a propietarios empresariales de flotas.
+
+El consumo al conducir (Wh/km y kWh por trayecto) y un historial completo de carga en casa necesitan una fuente persistente: importación de un registrador existente o un receptor Fleet Telemetry que guarde energía y distancia durante los trayectos. Esta versión no tiene esa fuente, no reconstruye trayectos pasados ni calcula consumo a partir de caídas del porcentaje de batería.
+
+Validación local: `node --test scripts/tesla-charging.test.mjs scripts/tesla-partner.test.mjs`, `npx tsc --noEmit` y `npm run build`. La respuesta real del historial requiere la sesión y el consentimiento del propietario; los ejemplos de prueba son sintéticos.
+
+Fuentes: [historial de carga](https://developer.tesla.com/docs/fleet-api/endpoints/charging-endpoints), [datos guardados del vehículo](https://developer.tesla.com/docs/fleet-api/endpoints/vehicle-endpoints), [permisos](https://developer.tesla.com/docs/fleet-api/authentication/overview), [Fleet Telemetry](https://developer.tesla.com/docs/fleet-api/fleet-telemetry).

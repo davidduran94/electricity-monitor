@@ -1,4 +1,5 @@
 'use client';
+import TeslaInsights from '../components/TeslaInsights';
 import { useEffect, useMemo, useState } from 'react';
 import { Zap, HousePlug, CarFront, ReceiptText, BatteryCharging, Activity, PlusCircle, Download, Trash2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -16,7 +17,7 @@ export default function Home() {
   const [tesla, setTesla] = useState<{connected:boolean;expired?:boolean}>({connected:false});
   const [teslaStatus, setTeslaStatus] = useState('');
   const [teslaChecking, setTeslaChecking] = useState(true);
-  const [teslaVehicles, setTeslaVehicles] = useState<Array<{displayName:string;state?:string;vinLast4?:string}>>([]);
+  const [teslaVehicles, setTeslaVehicles] = useState<Array<{id:string;displayName:string;state?:string;vinLast4?:string}>>([]);
   useEffect(() => {
     let active = true;
     async function loadTesla() {
@@ -89,6 +90,7 @@ export default function Home() {
         ? <button type="button" onClick={disconnectTesla} style={{...inputStyle,width:'auto',cursor:'pointer'}}>Desconectar Tesla</button>
         : <a href="/api/tesla/connect" style={{display:'inline-block',padding:'12px 18px',background:'#15803d',color:'white',borderRadius:8,textDecoration:'none'}}>Conectar Tesla</a>}
     </section>
+    {tesla.connected && !tesla.expired && <TeslaInsights vehicles={teslaVehicles} />}
     <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 12 }}>
       {([['Consumo CFE', format(totals.kwh) + ' kWh', <HousePlug size={22} color='#4ade80' />], ['Pagos CFE', money(totals.mxn), <ReceiptText size={22} color='#4ade80' />], ['Cargas Tesla', format(totals.teslaKwh) + ' kWh', <BatteryCharging size={22} color='#4ade80' />], ['Costo Tesla estimado', money(totals.teslaCost), <Zap size={22} color='#4ade80' />]] as const).map(([label, value, icon]) =>
         <div key={label} style={panel}><div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', color: '#a3b7a6' }}><span>{label}</span>{icon}</div><h2 style={{ marginBottom: 0 }}>{value}</h2></div>)}

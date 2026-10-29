@@ -1,18 +1,16 @@
 import { NextResponse } from 'next/server';
+import { getTeslaTokens } from '../../../../lib/tesla-oauth';
 import { teslaRequest } from '../../../../lib/tesla';
-
 export const dynamic = 'force-dynamic';
-
 export async function GET() {
-  const token = process.env.TESLA_ACCESS_TOKEN;
-  const vin = process.env.TESLA_VIN;
-  if (!token || !vin) return NextResponse.json({ connected: false, message: 'Configura TESLA_ACCESS_TOKEN y TESLA_VIN en Vercel.' }, { status: 503 });
+  const tokens = await getTeslaTokens();
+  if (!tokens) return NextResponse.json({ connected: false, message: 'Conecta tu cuenta Tesla.' }, { status: 401 });
+  if (tokens.expires_at <= Date.now()) return NextResponse.json({ connected: false, message: 'La sesión ha caducado. Vuelve a conectar Tesla.' }, { status: 401 });
   try {
-    const vehicles = await teslaRequest('/api/1/vehicles', token);
-    const vehicle = vehicles?.response?.find((item: { vin?: string }) => item.vin === vin);
-    if (!vehicle) return NextResponse.json({ connected: false, message: 'El VIN configurado no está autorizado para este token.' }, { status: 404 });
-    return NextResponse.json({ connected: true, vehicle: { displayName: vehicle.display_name || 'Tesla Model 3', state: vehicle.state, id: vehicle.id_s, vinLast4: vin.slice(-4) } }, { headers: { 'Cache-Control': 'no-store' } });
-  } catch {
-    return NextResponse.json({ connected: false, message: 'No se pudo consultar Tesla. Verifica el token, la región y los permisos.' }, { status: 502 });
-  }
+    const result = await teslaRequest('/api/1/vehicles', tokens.access_token);
+    const vehicles = (result.response || []).map((v: { display_name?: string; state?: string; id_s?: string; vin?: string }) => ({
+      displayName: v.display_name || 'Tesla', state: v.state, id: v.id_s, vinLast4: v.vin?.slice(-4)
+    }));
+    return NextResponse.json({ connected: true, vehicles }, { headers: { 'Cache-Control': 'no-store' } });
+  } catch { return NextResponse.json({ connected: false, message: 'Tesla no respondió.' }, { status: 502 }); }
 }

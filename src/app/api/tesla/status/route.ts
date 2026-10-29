@@ -12,5 +12,13 @@ export async function GET() {
       displayName: v.display_name || 'Tesla', state: v.state, id: v.id_s, vinLast4: v.vin?.slice(-4)
     }));
     return NextResponse.json({ connected: true, vehicles }, { headers: { 'Cache-Control': 'no-store' } });
-  } catch { return NextResponse.json({ connected: false, message: 'Tesla no respondió.' }, { status: 502 }); }
+  } catch (error) {
+    const status = error instanceof Error ? /HTTP (\d{3})/.exec(error.message)?.[1] : undefined;
+    const message = status === '401' ? 'Tesla rechazó la sesión. Vuelve a conectar tu cuenta.'
+      : status === '403' ? 'Tesla denegó el acceso a los vehículos (HTTP 403). Revisa los permisos de Fleet API y el registro de la aplicación.'
+      : status === '429' ? 'Tesla limitó temporalmente las consultas (HTTP 429). Intenta más tarde.'
+      : status ? `No se pudieron consultar los vehículos en Tesla (HTTP ${status}).`
+      : 'No se pudo contactar con Tesla Fleet API.';
+    return NextResponse.json({ connected: true, vehicles: [], message }, { status: 502, headers: { 'Cache-Control': 'no-store' } });
+  }
 }

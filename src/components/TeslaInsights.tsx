@@ -17,7 +17,11 @@ function price(event: ChargingEvent) {
   try { return new Intl.NumberFormat('es-MX', { style: 'currency', currency: event.currency }).format(event.amount); } catch { return 'Moneda no disponible'; }
 }
 export default function TeslaInsights({ vehicles }: { vehicles: Vehicle[] }) {
-  const [selected, setSelected] = useState(vehicles[0]?.id || '');
+  const [preferredVehicle, setPreferredVehicle] = useState('');
+  // Vehicles arrive after the session request. Resolve the default from current props,
+  // so the visible option and the identifier sent to both APIs always agree.
+  const selected = vehicles.some(vehicle => vehicle.id === preferredVehicle)
+    ? preferredVehicle : vehicles[0]?.id || '';
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [chargeMessage, setChargeMessage] = useState('');
   const [chargeLoading, setChargeLoading] = useState(false);
@@ -31,6 +35,7 @@ export default function TeslaInsights({ vehicles }: { vehicles: Vehicle[] }) {
   }, [selected]);
   async function loadCharge() {
     const id = selected;
+    if (!id) return;
     setChargeLoading(true); setChargeMessage('');
     try {
       const response = await fetch(`/api/tesla/charge?vehicleId=${encodeURIComponent(id)}`, { cache: 'no-store' });
@@ -43,6 +48,7 @@ export default function TeslaInsights({ vehicles }: { vehicles: Vehicle[] }) {
   }
   async function loadHistory(nextPage: number) {
     const id = selected;
+    if (!id) return;
     setHistoryLoading(true);
     try {
       const response = await fetch(`/api/tesla/history?vehicleId=${encodeURIComponent(id)}&page=${nextPage}`, { cache: 'no-store' });
@@ -56,14 +62,14 @@ export default function TeslaInsights({ vehicles }: { vehicles: Vehicle[] }) {
   return <div style={{ display: 'grid', gap: 16, marginBottom: 22 }}>
     <div>
       <label htmlFor="tesla-vehicle">Vehículo para las consultas</label>{' '}
-      <select id="tesla-vehicle" value={selected} disabled={chargeLoading || historyLoading} onChange={e => setSelected(e.target.value)} style={{ ...button, maxWidth: '100%' }}>
+      <select id="tesla-vehicle" value={selected} disabled={chargeLoading || historyLoading} onChange={e => setPreferredVehicle(e.target.value)} style={{ ...button, maxWidth: '100%' }}>
         {vehicles.map(v => <option key={v.id} value={v.id}>{v.displayName} · {v.vinLast4 || '—'}</option>)}
       </select>
     </div>
     <section style={panel} aria-labelledby="tesla-charge-heading">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <h2 id="tesla-charge-heading" style={{ display: 'flex', gap: 10, alignItems: 'center', margin: 0 }}><BatteryCharging color="#4ade80" aria-hidden /> Última lectura de carga</h2>
-        <button type="button" style={button} disabled={chargeLoading} onClick={loadCharge}><RefreshCw size={14} aria-hidden /> {chargeLoading ? 'Consultando…' : 'Consultar carga'}</button>
+        <button type="button" style={button} disabled={chargeLoading || !selected} onClick={loadCharge}><RefreshCw size={14} aria-hidden /> {chargeLoading ? 'Consultando…' : 'Consultar carga'}</button>
       </div>
       <p style={muted}>Consulta la última lectura enviada a Tesla. Puede tener varias horas de antigüedad.</p>
       {chargeMessage && <p role="status">{chargeMessage}</p>}
@@ -78,7 +84,7 @@ export default function TeslaInsights({ vehicles }: { vehicles: Vehicle[] }) {
     <section style={panel} aria-labelledby="tesla-history-heading">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <h2 id="tesla-history-heading" style={{ display: 'flex', gap: 10, alignItems: 'center', margin: 0 }}><History color="#4ade80" aria-hidden /> Últimas cargas de Tesla</h2>
-        <button type="button" style={button} disabled={historyLoading} onClick={() => loadHistory(1)}>{historyLoading ? 'Consultando…' : 'Consultar historial'}</button>
+        <button type="button" style={button} disabled={historyLoading || !selected} onClick={() => loadHistory(1)}>{historyLoading ? 'Consultando…' : 'Consultar historial'}</button>
       </div>
       <p style={muted}>Muestra las sesiones que Tesla devuelve para tu cuenta. No representa un historial completo de cargas en casa ni el consumo al conducir.</p>
       {history?.message && <p role="status">{history.message}</p>}

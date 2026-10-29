@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   const expected = request.cookies.get('tesla_oauth_state')?.value;
   const code = request.nextUrl.searchParams.get('code');
   if (!state || !expected || state !== expected || !code)
-    return NextResponse.redirect(new URL('/?tesla=authorization_failed', base));
+    return NextResponse.redirect(new URL('/?tesla=authorization_failed&reason=state', base));
   try {
     const tokens = await exchangeTeslaToken(new URLSearchParams({
       grant_type: 'authorization_code', client_id: process.env.TESLA_CLIENT_ID || '',
@@ -22,8 +22,13 @@ export async function GET(request: NextRequest) {
     }), { ...secureCookie, maxAge: 60 * 60 * 24 * 80 });
     response.cookies.delete('tesla_oauth_state');
     return response;
-  } catch {
-    const response = NextResponse.redirect(new URL('/?tesla=authorization_failed', base));
+  } catch (error) {
+    const reason = error instanceof Error && error.message === 'Missing tokens' ? 'missing_tokens'
+      : error instanceof Error && error.message.includes('TESLA_SESSION_SECRET') ? 'session_config'
+      : error instanceof Error && error.message.includes('Tesla OAuth token exchange failed') ? 'token_exchange'
+      : 'callback_error';
+    console.error('Tesla OAuth callback failed', { reason });
+    const response = NextResponse.redirect(new URL(`/?tesla=authorization_failed&reason=${reason}`, base));
     response.cookies.delete('tesla_oauth_state');
     return response;
   }

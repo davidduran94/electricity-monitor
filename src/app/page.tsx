@@ -13,6 +13,38 @@ export default function Home() {
   const [bills, setBills] = useState<Bill[]>([]);
   const [charges, setCharges] = useState<Charge[]>([]);
   const [ready, setReady] = useState(false);
+  const [tesla, setTesla] = useState<{connected:boolean;expired?:boolean}>({connected:false});
+  const [teslaStatus, setTeslaStatus] = useState('');
+  const [teslaVehicles, setTeslaVehicles] = useState<Array<{displayName:string;state?:string;vinLast4?:string}>>([]);
+  useEffect(() => {
+    let active = true;
+    async function loadTesla() {
+      try {
+        let res = await fetch('/api/tesla/account', {cache:'no-store'});
+        let session = await res.json();
+        if (session.connected && session.expired) {
+          const refreshed = await fetch('/api/tesla/refresh', {method:'POST', headers:{'Content-Type':'application/json'}});
+          if (refreshed.ok) session = {connected:true,expired:false};
+        }
+        if (!active) return;
+        setTesla(session);
+        if (session.connected && !session.expired) {
+          res = await fetch('/api/tesla/status', {cache:'no-store'});
+          const data = await res.json();
+          if (active) {
+            if (res.ok) setTeslaVehicles(data.vehicles || []);
+            else setTeslaStatus(data.message || 'No se pudo consultar Tesla.');
+          }
+        }
+      } catch { if (active) setTeslaStatus('No se pudo consultar la conexión Tesla.'); }
+    }
+    loadTesla();
+    return () => { active = false; };
+  }, []);
+  async function disconnectTesla() {
+    const res = await fetch('/api/tesla/disconnect', {method:'POST',headers:{'Content-Type':'application/json'}});
+    if (res.ok) { setTesla({connected:false}); setTeslaVehicles([]); setTeslaStatus('Cuenta desconectada.'); }
+  }
   const [bill, setBill] = useState({ from: '', to: '', kwh: '', mxn: '', paid: false });
   const [charge, setCharge] = useState({ date: '', kwh: '', cost: '' });
   useEffect(() => {
@@ -41,6 +73,15 @@ export default function Home() {
       <div><h1 style={{ margin: 0 }}>⚡ Electricity Monitor</h1><p style={{ color: '#a3b7a6' }}>Casa · Tesla Model 3 · CFE</p></div>
       <button onClick={exportData} style={{ ...inputStyle, width: 'auto', cursor: 'pointer' }}>⬇ Exportar respaldo JSON</button>
     </header>
+    <section style={{ ...panel, marginBottom: 20 }}>
+      <h2 style={{display:'flex',alignItems:'center',gap:10}}><CarFront color='#4ade80' /> Conexión Tesla Fleet</h2>
+      <p>{tesla.connected && !tesla.expired ? 'Cuenta Tesla conectada' : 'Conecta tu Tesla para consultar información de tu vehículo.'}</p>
+      {teslaStatus && <p role="status">{teslaStatus}</p>}
+      {teslaVehicles.map((v,i) => <p key={i}>{v.displayName} · {v.state || 'Estado desconocido'} · VIN terminado en {v.vinLast4 || '—'}</p>)}
+      {tesla.connected && !tesla.expired
+        ? <button type="button" onClick={disconnectTesla} style={{...inputStyle,width:'auto',cursor:'pointer'}}>Desconectar Tesla</button>
+        : <a href="/api/tesla/connect" style={{display:'inline-block',padding:'12px 18px',background:'#15803d',color:'white',borderRadius:8,textDecoration:'none'}}>Conectar Tesla</a>}
+    </section>
     <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 12 }}>
       {([['Consumo CFE', format(totals.kwh) + ' kWh', <HousePlug size={22} color='#4ade80' />], ['Pagos CFE', money(totals.mxn), <ReceiptText size={22} color='#4ade80' />], ['Cargas Tesla', format(totals.teslaKwh) + ' kWh', <BatteryCharging size={22} color='#4ade80' />], ['Costo Tesla estimado', money(totals.teslaCost), <Zap size={22} color='#4ade80' />]] as const).map(([label, value, icon]) =>
         <div key={label} style={panel}><div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', color: '#a3b7a6' }}><span>{label}</span>{icon}</div><h2 style={{ marginBottom: 0 }}>{value}</h2></div>)}

@@ -29,7 +29,7 @@ Después del registro, el propietario debe usar **Conectar Tesla** y aprobar el 
 ## Verificación del 29 de octubre de 2026
 
 - Repositorio base: `4a23d177f48b6ef94cbc9ad2d56f9ba546cf6051`.
-- El Partner Token sin scope se obtuvo correctamente usando los secretos existentes de preview en Vercel.
+- Ambas solicitudes del Partner Token (con los scopes originales y sin scope) se obtuvieron correctamente usando los secretos existentes de preview en Vercel. El HTTP 400 anterior no se reprodujo; no hay evidencia para atribuirlo a los scopes.
 - La URL pública de la clave respondió HTTP 302 hacia Vercel SSO: la protección `all` impide el acceso anónimo de Tesla. Requiere ajustar la protección antes de registrar el dominio.
 - Los logs históricos del HTTP 400 exceden la retención del plan. No atribuir una causa definitiva a ese fallo sin reproducirlo.
 

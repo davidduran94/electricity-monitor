@@ -165,7 +165,7 @@ export default function TeslaInsights({ vehicles, cfePeriods }: { vehicles: Vehi
         <p style={muted}>Lectura del vehículo: {date(snapshot.timestamp)}. La energía añadida a la batería no incluye necesariamente todas las pérdidas de carga ni equivale al consumo facturado por CFE.</p>
         <button type="button" style={{...button,background:'#15803d'}} disabled={snapshotSaving || chargeLoading || !selected || snapshot.energyAddedKwh === null || !snapshot.timestamp} onClick={() => void saveLatestSnapshot()}>{snapshotSaving ? 'Guardando en Neon…' : 'Guardar última lectura en Neon'}</button>
         <p style={muted}>Confirma que esta lectura corresponde a una carga en casa. Neon valida que la lectura de Tesla tenga menos de 30 minutos; no se agregará a los totales por periodo CFE como una sesión completa.</p>
-        {snapshotSaveMessage && <p role="status">{snapshotSaveMessage}</p>
+        {snapshotSaveMessage && <p role="status">{snapshotSaveMessage}</p>}
       </> : !chargeMessage && <p>Pulsa «Consultar carga» para ver batería, energía añadida y potencia.</p>}
     </section>
     <section style={panel} aria-labelledby="tesla-home-heading">

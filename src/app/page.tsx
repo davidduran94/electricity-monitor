@@ -82,8 +82,8 @@ export default function Home() {
     <header style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 16, marginBottom: 28 }}>
       <div><h1 style={{ margin: 0 }}>⚡ Electricity Monitor</h1><p style={{ color: '#a3b7a6' }}>Casa · Tesla Model 3 · CFE</p></div>
       <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
-        <button onClick={exportData} style={{ ...inputStyle, width: 'auto', cursor: 'pointer' }}>⬇ Exportar respaldo JSON</button>
-        <button onClick={logout} style={{ ...inputStyle, width: 'auto', cursor: 'pointer', borderColor:'#7f1d1d' }}>Cerrar sesión</button>
+        <button onClick={exportData} style={{ ...inputStyle, width: 'auto', cursor: 'pointer', background:'#374151',borderColor:'#6b7280',color:'#f9fafb' }}>⬇ Exportar respaldo JSON</button>
+        <button onClick={logout} style={{ ...inputStyle, width: 'auto', cursor: 'pointer', background:'#374151',borderColor:'#6b7280',color:'#f9fafb' }}>Cerrar sesión</button>
       </div>
     </header>
     {tesla.connected && !tesla.expired && <p style={{fontSize:13,color:'#a3b7a6'}}>¿El historial devuelve HTTP 400? <a href="/api/tesla/connect?history=1" style={{color:'#f87171'}}>Volver a autorizar Tesla con permiso de carga</a>. Tesla solicitará confirmar los permisos.</p>}

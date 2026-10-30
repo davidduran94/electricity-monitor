@@ -114,7 +114,7 @@ export default function TeslaInsights({ vehicles }: { vehicles: Vehicle[] }) {
         <button type="button" style={button} disabled={homeLoading} onClick={loadHome}>Consultar registros Neon</button>
       </div>
       {homeMessage && <p role="status">{homeMessage}</p>}
-      <p style={muted}>Sesiones domésticas completas registradas: {homeEvents.length}. Las lecturas aisladas no se contabilizan como sesiones.</p>
+      <p style={muted}>Sesiones domésticas completas registradas: {homeEvents.length}. Las lecturas aisladas todavía no se contabilizan como sesiones.</p>
     </section>
     <section style={panel} aria-labelledby="tesla-history-heading">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>

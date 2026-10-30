@@ -25,6 +25,21 @@ export default function TeslaInsights({ vehicles, cfePeriods }: { vehicles: Vehi
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [chargeMessage, setChargeMessage] = useState('');
   const [chargeLoading, setChargeLoading] = useState(false);
+  const [snapshotSaving, setSnapshotSaving] = useState(false);
+  const [snapshotSaveMessage, setSnapshotSaveMessage] = useState('');
+  async function saveLatestSnapshot() {
+    if (!selected || !snapshot) return;
+    const vehicleId = selected;
+    setSnapshotSaving(true);
+    setSnapshotSaveMessage('');
+    try {
+      const response = await fetch(`/api/tesla/home?vehicleId=${encodeURIComponent(vehicleId)}`, {method:'POST'});
+      const data = await response.json();
+      if (selection.current !== vehicleId) return;
+      setSnapshotSaveMessage(response.ok ? 'Lectura guardada en Neon. Es una observación, no una sesión de carga completa.' : data.message || 'No se pudo guardar la lectura.');
+    } catch { if (selection.current === vehicleId) setSnapshotSaveMessage('No se pudo guardar la lectura en Neon.'); }
+    finally { setSnapshotSaving(false); }
+  }
   const [history, setHistory] = useState<HistoryResult | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [page, setPage] = useState(1);
@@ -98,14 +113,14 @@ export default function TeslaInsights({ vehicles, cfePeriods }: { vehicles: Vehi
   const selection = useRef(selected);
   useEffect(() => {
     selection.current = selected;
-    setSnapshot(null); setChargeMessage(''); setHistory(null); setPage(1);
+    setSnapshot(null); setChargeMessage(''); setSnapshotSaveMessage(''); setHistory(null); setPage(1);
     setHomeEvents([]); setHomeFetched(false); setHomeMessage(''); setDeleteCandidate(null);
     if (selected) void loadHome();
   }, [selected]);
   async function loadCharge() {
     const id = selected;
     if (!id) return;
-    setChargeLoading(true); setChargeMessage('');
+    setChargeLoading(true); setChargeMessage(''); setSnapshotSaveMessage('');
     try {
       const response = await fetch(`/api/tesla/charge?vehicleId=${encodeURIComponent(id)}`, { cache: 'no-store' });
       const data = await response.json();
@@ -148,6 +163,9 @@ export default function TeslaInsights({ vehicles, cfePeriods }: { vehicles: Vehi
         </div>
         <p>{snapshot.chargingState ? states[snapshot.chargingState] || 'Estado de carga no reconocido' : 'Estado no disponible'} · Límite: {num(snapshot.chargeLimit, '%')}</p>
         <p style={muted}>Lectura del vehículo: {date(snapshot.timestamp)}. La energía añadida a la batería no incluye necesariamente todas las pérdidas de carga ni equivale al consumo facturado por CFE.</p>
+        <button type="button" style={{...button,background:'#15803d'}} disabled={snapshotSaving || chargeLoading || !selected || snapshot.energyAddedKwh === null || !snapshot.timestamp} onClick={() => void saveLatestSnapshot()}>{snapshotSaving ? 'Guardando en Neon…' : 'Guardar última lectura en Neon'}</button>
+        <p style={muted}>Confirma que esta lectura corresponde a una carga en casa. Neon valida que la lectura de Tesla tenga menos de 30 minutos; no se agregará a los totales por periodo CFE como una sesión completa.</p>
+        {snapshotSaveMessage && <p role="status">{snapshotSaveMessage}</p>
       </> : !chargeMessage && <p>Pulsa «Consultar carga» para ver batería, energía añadida y potencia.</p>}
     </section>
     <section style={panel} aria-labelledby="tesla-home-heading">

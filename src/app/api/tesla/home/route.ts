@@ -9,7 +9,7 @@ async function authorizedVehicle(request: NextRequest) {
   const tokens = await getTeslaTokens();
   if (!tokens || tokens.expires_at <= Date.now()) return null;
   const id = request.nextUrl.searchParams.get('vehicleId');
-  if (!id || !/^\\d{1,30}$/.test(id)) return null;
+  if (!id || !/^\d{1,30}$/.test(id)) return null;
   const vehicles = await teslaRequest('/api/1/vehicles', tokens.access_token);
   const vehicle = vehicles.response?.find((v: { id_s?: string; id?: number }) => String(v.id_s ?? v.id) === id);
   if (!vehicle?.vin) return null;

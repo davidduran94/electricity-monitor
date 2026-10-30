@@ -79,8 +79,10 @@ export default function Home() {
       <div><h1 style={{ margin: 0 }}>⚡ Electricity Monitor</h1><p style={{ color: '#a3b7a6' }}>Casa · Tesla Model 3 · CFE</p></div>
       <button onClick={exportData} style={{ ...inputStyle, width: 'auto', cursor: 'pointer' }}>⬇ Exportar respaldo JSON</button>
     </header>
-    <section style={{ ...panel, marginBottom: 20, width: '100%', maxWidth: 550, boxSizing: 'border-box' }}>
-      <h2 style={{display:'flex',alignItems:'center',gap:10}}><CarFront color='#4ade80' /> Conexión Tesla Fleet</h2>
+    {tesla.connected && !tesla.expired && <p style={{fontSize:13,color:'#a3b7a6'}}>¿El historial devuelve HTTP 400? <a href="/api/tesla/connect?history=1" style={{color:'#f87171'}}>Volver a autorizar Tesla con permiso de carga</a>. Tesla solicitará confirmar los permisos.</p>}
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 290px), 1fr))',gap:16,marginBottom:22,alignItems:'start'}}>
+    <section style={{ ...panel, minWidth: 0, borderColor: '#7f1d1d' }}>
+      <h2 style={{display:'flex',alignItems:'center',gap:10}}><CarFront color='#f87171' /> Conexión Tesla Fleet</h2>
       <p>{tesla.connected && !tesla.expired ? 'Cuenta Tesla conectada' : 'Conecta tu Tesla para consultar información de tu vehículo.'}</p>
       {teslaChecking && <p role="status">Comprobando sesión Tesla...</p>}
       {teslaStatus && <p role="status">{teslaStatus}</p>}
@@ -88,10 +90,10 @@ export default function Home() {
       {teslaVehicles.map((v,i) => <p key={i}>{v.displayName} · {v.state || 'Estado desconocido'} · VIN terminado en {v.vinLast4 || '—'}</p>)}
       {tesla.connected && !tesla.expired
         ? <button type="button" onClick={disconnectTesla} style={{...inputStyle,width:'auto',cursor:'pointer'}}>Desconectar Tesla</button>
-        : <a href="/api/tesla/connect" style={{display:'inline-block',padding:'12px 18px',background:'#15803d',color:'white',borderRadius:8,textDecoration:'none'}}>Conectar Tesla</a>}
+        : <a href="/api/tesla/connect" style={{display:'inline-block',padding:'12px 18px',background:'#b91c1c',color:'white',borderRadius:8,textDecoration:'none'}}>Conectar Tesla</a>}
     </section>
-    {tesla.connected && !tesla.expired && <p style={{fontSize:13,color:'#a3b7a6'}}>¿El historial devuelve HTTP 400? <a href="/api/tesla/connect?history=1" style={{color:'#4ade80'}}>Volver a autorizar Tesla con permiso de carga</a>. Tesla solicitará confirmar los permisos.</p>}
     {tesla.connected && !tesla.expired && <TeslaInsights vehicles={teslaVehicles} cfePeriods={bills.map(({ id, from, to }) => ({ id, from, to }))} />}
+    </div>
     <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 12 }}>
       {([['Consumo CFE', format(totals.kwh) + ' kWh', <HousePlug size={22} color='#4ade80' />], ['Pagos CFE', money(totals.mxn), <ReceiptText size={22} color='#4ade80' />], ['Cargas Tesla', format(totals.teslaKwh) + ' kWh', <BatteryCharging size={22} color='#4ade80' />], ['Costo Tesla estimado', money(totals.teslaCost), <Zap size={22} color='#4ade80' />]] as const).map(([label, value, icon]) =>
         <div key={label} style={panel}><div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', color: '#a3b7a6' }}><span>{label}</span>{icon}</div><h2 style={{ marginBottom: 0 }}>{value}</h2></div>)}

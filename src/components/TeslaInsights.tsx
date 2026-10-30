@@ -30,6 +30,20 @@ export default function TeslaInsights({ vehicles }: { vehicles: Vehicle[] }) {
   const [page, setPage] = useState(1);
   const [homeEvents, setHomeEvents] = useState<Array<{id:string;started_at:string;ended_at:string|null;energy_kwh:number|null}>>([]);
   const [homeFetched, setHomeFetched] = useState(false);
+  const [deleteCandidate, setDeleteCandidate] = useState<string | null>(null);
+  async function deleteHomeRecord(recordId: string) {
+    if (!selected) return;
+    setHomeLoading(true);
+    try {
+      const res = await fetch('/api/tesla/home/manual', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vehicleId: selected, recordId }) });
+      const data = await res.json();
+      if (!res.ok) { setHomeMessage(data.message || 'No se pudo eliminar el registro.'); return; }
+      setHomeEvents(current => current.filter(item => item.id !== recordId));
+      setDeleteCandidate(null);
+      setHomeMessage('Registro eliminado correctamente.');
+    } catch { setHomeMessage('No se pudo eliminar el registro.'); }
+    finally { setHomeLoading(false); }
+  }
   const [homeMessage, setHomeMessage] = useState('');
   const [homeLoading, setHomeLoading] = useState(false);
   const [manualDate, setManualDate] = useState(() => new Date().toLocaleDateString('en-CA'));
@@ -77,7 +91,7 @@ export default function TeslaInsights({ vehicles }: { vehicles: Vehicle[] }) {
   useEffect(() => {
     selection.current = selected;
     setSnapshot(null); setChargeMessage(''); setHistory(null); setPage(1);
-    setHomeEvents([]); setHomeFetched(false); setHomeMessage('');
+    setHomeEvents([]); setHomeFetched(false); setHomeMessage(''); setDeleteCandidate(null);
     if (selected) void loadHome();
   }, [selected]);
   async function loadCharge() {
@@ -143,7 +157,7 @@ export default function TeslaInsights({ vehicles }: { vehicles: Vehicle[] }) {
       </div>
       {homeMessage && <p role="status">{homeMessage}</p>}
       <p style={muted}>Sesiones domésticas registradas: {homeEvents.length}. Las cargas manuales se incluyen; las lecturas aisladas no.</p>
-      {homeFetched && (homeEvents.length ? <div style={{overflowX:'auto'}}><table style={{width:'100%',borderCollapse:'collapse',textAlign:'left'}}><thead><tr>{['Fecha','Lugar','Energía'].map(label => <th key={label} scope="col" style={{padding:'10px 8px',borderBottom:'1px solid #475569'}}>{label}</th>)}</tr></thead><tbody>{homeEvents.map(event => <tr key={event.id}><td style={{padding:'10px 8px',borderBottom:'1px solid #24402b'}}>{date(event.started_at)}</td><td>Casa</td><td>{num(event.energy_kwh === null ? null : Number(event.energy_kwh), 'kWh')}</td></tr>)}</tbody></table></div> : <p style={muted}>Aún no hay cargas domésticas registradas para este vehículo.</p>)}
+      {homeFetched && (homeEvents.length ? <div style={{overflowX:'auto'}}><table style={{width:'100%',borderCollapse:'collapse',textAlign:'left'}}><thead><tr>{['Fecha','Lugar','Energía','Acciones'].map(label => <th key={label} scope="col" style={{padding:'10px 8px',borderBottom:'1px solid #475569'}}>{label}</th>)}</tr></thead><tbody>{homeEvents.map(event => <tr key={event.id}><td style={{padding:'10px 8px',borderBottom:'1px solid #24402b'}}>{date(event.started_at)}</td><td>Casa</td><td>{num(event.energy_kwh === null ? null : Number(event.energy_kwh), 'kWh')}</td><td>{deleteCandidate === event.id ? <span><button type="button" style={button} disabled={homeLoading} onClick={() => void deleteHomeRecord(event.id)}>Confirmar eliminación</button> <button type="button" style={button} onClick={() => setDeleteCandidate(null)}>Cancelar</button></span> : <button type="button" style={button} disabled={homeLoading} onClick={() => setDeleteCandidate(event.id)}>Eliminar</button>}</td></tr>)}</tbody></table></div> : <p style={muted}>Aún no hay cargas domésticas registradas para este vehículo.</p>)}
     </section>
     <section style={panel} aria-labelledby="tesla-history-heading">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>

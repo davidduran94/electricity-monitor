@@ -150,7 +150,7 @@ export default function TeslaInsights({ vehicles, cfePeriods }: { vehicles: Vehi
         {vehicles.map(v => <option key={v.id} value={v.id}>{v.displayName} · {v.vinLast4 || '—'}</option>)}
       </select>
     </div>
-    <section style={panel} aria-labelledby="tesla-charge-heading">
+    <section style={{...panel, width:'100%', maxWidth:550, boxSizing:'border-box'}} aria-labelledby="tesla-charge-heading">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <h2 id="tesla-charge-heading" style={{ display: 'flex', gap: 10, alignItems: 'center', margin: 0 }}><BatteryCharging color="#4ade80" aria-hidden /> Última lectura de carga</h2>
         <button type="button" style={button} disabled={chargeLoading || !selected} onClick={loadCharge}><RefreshCw size={14} aria-hidden /> {chargeLoading ? 'Consultando…' : 'Consultar carga'}</button>

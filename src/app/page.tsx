@@ -79,7 +79,7 @@ export default function Home() {
       <div><h1 style={{ margin: 0 }}>⚡ Electricity Monitor</h1><p style={{ color: '#a3b7a6' }}>Casa · Tesla Model 3 · CFE</p></div>
       <button onClick={exportData} style={{ ...inputStyle, width: 'auto', cursor: 'pointer' }}>⬇ Exportar respaldo JSON</button>
     </header>
-    <section style={{ ...panel, marginBottom: 20 }}>
+    <section style={{ ...panel, marginBottom: 20, width: '100%', maxWidth: 550, boxSizing: 'border-box' }}>
       <h2 style={{display:'flex',alignItems:'center',gap:10}}><CarFront color='#4ade80' /> Conexión Tesla Fleet</h2>
       <p>{tesla.connected && !tesla.expired ? 'Cuenta Tesla conectada' : 'Conecta tu Tesla para consultar información de tu vehículo.'}</p>
       {teslaChecking && <p role="status">Comprobando sesión Tesla...</p>}

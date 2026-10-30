@@ -14,9 +14,9 @@ export async function GET(request: NextRequest) {
     const result = await teslaRequest('/api/1/vehicles', tokens.access_token);
     const vehicle = result.response?.find((v: { id_s?: string; id?: number }) => String(v.id_s ?? v.id) === id);
     if (!vehicle?.vin) return NextResponse.json({ message: 'Vehículo no autorizado.' }, { status: 403, headers });
-    // Avoid unverified sort fields: Tesla can reject the entire request with HTTP 400.
-    // Query the documented charging history with basic pagination only.
-    const params = new URLSearchParams({ vin: vehicle.vin, pageNo: page, pageSize: '20' });
+    // Diagnostic fallback: Tesla rejected requests containing pagination.
+    // Request the minimal VIN-only query to isolate pagination validation.
+    const params = new URLSearchParams({ vin: vehicle.vin });
     const endpoint = new URL(`/api/1/dx/charging/history?${params}`, process.env.TESLA_FLEET_API_BASE_URL || 'https://fleet-api.prd.na.vn.cloud.tesla.com');
     const upstream = await fetch(endpoint, {
       headers: { Authorization: `Bearer ${tokens.access_token}` },

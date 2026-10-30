@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { BatteryCharging, History, Gauge, RefreshCw } from 'lucide-react';
 import type { ChargingEvent } from '../lib/tesla-charging';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 type Vehicle = { id: string; displayName: string; vinLast4?: string };
 type Snapshot = { batteryLevel: number | null; chargingState: string | null; chargeLimit: number | null; energyAddedKwh: number | null; powerKw: number | null; batteryRangeKm: number | null; timestamp: string | null };
@@ -16,7 +17,7 @@ function price(event: ChargingEvent) {
   if (event.amount === null || !event.currency || !/^[A-Z]{3}$/.test(event.currency)) return 'Importe no disponible';
   try { return new Intl.NumberFormat('es-MX', { style: 'currency', currency: event.currency }).format(event.amount); } catch { return 'Moneda no disponible'; }
 }
-export default function TeslaInsights({ vehicles, cfePeriods }: { vehicles: Vehicle[]; cfePeriods: Array<{id:string;from:string;to:string}> }) {
+export default function TeslaInsights({ vehicles, cfePeriods }: { vehicles: Vehicle[]; cfePeriods: Array<{id:string;from:string;to:string;kwh:number;mxn:number}> }) {
   const [preferredVehicle, setPreferredVehicle] = useState('');
   const [showDriving, setShowDriving] = useState(false);
   // Vehicles arrive after the session request. Resolve the default from current props,
@@ -64,10 +65,12 @@ export default function TeslaInsights({ vehicles, cfePeriods }: { vehicles: Vehi
   const cfeTotals = [...cfePeriods].sort((a,b) => b.from.localeCompare(a.from)).map(period => {
     const records = homeEvents.filter(event => {
       // CFE receipt dates are inclusive; use the Mexico-local calendar date.
-      const localDate = new Intl.DateTimeFormat('en-CA', {timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(event.started_at));
+      const parts = new Intl.DateTimeFormat('en-US', {timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(event.started_at));
+      const get = (type: string) => parts.find(part => part.type === type)?.value || '';
+      const localDate = `${get('year')}-${get('month')}-${get('day')}`;
       return localDate >= period.from && localDate <= period.to;
     });
-    return { ...period, count: records.length, kwh: records.reduce((sum, event) => sum + Number(event.energy_kwh || 0), 0) };
+    return { ...period, count: records.length, neonKwh: records.reduce((sum, event) => sum + Number(event.energy_kwh || 0), 0) };
   });
   const [homeLoading, setHomeLoading] = useState(false);
   const [manualDate, setManualDate] = useState(() => new Date().toLocaleDateString('en-CA'));
@@ -206,9 +209,20 @@ export default function TeslaInsights({ vehicles, cfePeriods }: { vehicles: Vehi
         <button type="button" style={button} disabled={homeLoading} onClick={loadHome}>Consultar registros Neon</button>
       </div>
       {homeMessage && <p role="status">{homeMessage}</p>}
+      <h3 style={{marginTop:24}}>Comparativo CFE vs cargas en Neon por recibo</h3>
+      <p style={muted}>Consumo CFE y cargas domésticas en kWh, junto con el pago del recibo y el costo estimado de las cargas a $4 MXN/kWh. Son magnitudes distintas y se muestran en dos gráficas separadas. La energía Tesla ya forma parte del consumo CFE: no se suma nuevamente.</p>
+      {!cfePeriods.length ? <p style={muted}>Registra al menos un recibo CFE para visualizar el comparativo.</p> : !homeFetched ? <p style={muted}>Consultando las sesiones en Neon para comparar los periodos…</p> : <>
+        <div style={{height:280,width:'100%',minWidth:0}} role="img" aria-label="Comparación por periodo del consumo CFE y las cargas Tesla en kilowatt-hora">
+          <ResponsiveContainer width="100%" height="100%"><BarChart data={[...cfeTotals].reverse().map(period => ({period:period.from, 'CFE kWh':period.kwh,'Tesla Neon kWh':period.neonKwh}))} margin={{top:8,right:12,left:0,bottom:8}}><CartesianGrid stroke="#374151" strokeDasharray="3 3"/><XAxis dataKey="period" stroke="#e5e7eb" fontSize={11}/><YAxis stroke="#e5e7eb"/><Tooltip/><Legend/><Bar dataKey="CFE kWh" fill="#f87171"/><Bar dataKey="Tesla Neon kWh" fill="#fbbf24"/></BarChart></ResponsiveContainer>
+        </div>
+        <div style={{height:280,width:'100%',minWidth:0,marginTop:20}} role="img" aria-label="Comparación por periodo del pago CFE y el costo estimado Tesla en pesos mexicanos">
+          <ResponsiveContainer width="100%" height="100%"><BarChart data={[...cfeTotals].reverse().map(period => ({period:period.from,'Pago CFE MXN':period.mxn,'Tesla estimado MXN':Number((period.neonKwh*4).toFixed(2))}))} margin={{top:8,right:12,left:0,bottom:8}}><CartesianGrid stroke="#374151" strokeDasharray="3 3"/><XAxis dataKey="period" stroke="#e5e7eb" fontSize={11}/><YAxis stroke="#e5e7eb"/><Tooltip formatter={(value) => `${Number(value).toFixed(2)} MXN`}/><Legend/><Bar dataKey="Pago CFE MXN" fill="#f87171"/><Bar dataKey="Tesla estimado MXN" fill="#fbbf24"/></BarChart></ResponsiveContainer>
+        </div>
+        <div style={{overflowX:'auto'}}><table style={{width:'100%',borderCollapse:'collapse',textAlign:'left'}}><thead><tr>{['Periodo','CFE kWh','CFE MXN','Neon kWh','Tesla estimado MXN'].map(label=><th key={label} style={{padding:'10px 8px',borderBottom:'1px solid #475569'}}>{label}</th>)}</tr></thead><tbody>{cfeTotals.map(period=><tr key={period.id}><td style={{padding:'10px 8px',borderBottom:'1px solid #24402b'}}>{period.from} a {period.to}</td><td>{num(period.kwh,'kWh')}</td><td>{num(period.mxn,'MXN')}</td><td>{num(period.neonKwh,'kWh')}</td><td>{num(period.neonKwh*4,'MXN')}</td></tr>)}</tbody></table></div>
+      </>}
       <h3 style={{marginTop:20}}>Energía cargada por periodo de CFE</h3>
       <p style={muted}>Totales de las sesiones domésticas registradas en Neon, según la fecha de cada carga. No incluyen lecturas aisladas ni cargas guardadas solo en este navegador. Los periodos se toman de tus recibos CFE registrados.</p>
-      {!cfePeriods.length ? <p style={muted}>Agrega un recibo CFE con fechas de inicio y fin para ver los totales por periodo.</p> : <div style={{overflowX:'auto'}}><table style={{width:'100%',borderCollapse:'collapse',textAlign:'left'}}><thead><tr>{['Periodo CFE','Cargas','Total cargado'].map(label => <th key={label} style={{padding:'10px 8px',borderBottom:'1px solid #475569'}}>{label}</th>)}</tr></thead><tbody>{cfeTotals.map(period => <tr key={period.id}><td style={{padding:'10px 8px',borderBottom:'1px solid #24402b'}}>{period.from} a {period.to}</td><td>{homeFetched ? period.count : '—'}</td><td><strong>{homeFetched ? num(period.kwh,'kWh') : 'Pendiente de consulta'}</strong></td></tr>)}</tbody></table></div>}
+      {!cfePeriods.length ? <p style={muted}>Agrega un recibo CFE con fechas de inicio y fin para ver los totales por periodo.</p> : <div style={{overflowX:'auto'}}><table style={{width:'100%',borderCollapse:'collapse',textAlign:'left'}}><thead><tr>{['Periodo CFE','Cargas','Total cargado'].map(label => <th key={label} style={{padding:'10px 8px',borderBottom:'1px solid #475569'}}>{label}</th>)}</tr></thead><tbody>{cfeTotals.map(period => <tr key={period.id}><td style={{padding:'10px 8px',borderBottom:'1px solid #24402b'}}>{period.from} a {period.to}</td><td>{homeFetched ? period.count : '—'}</td><td><strong>{homeFetched ? num(period.neonKwh,'kWh') : 'Pendiente de consulta'}</strong></td></tr>)}</tbody></table></div>}
       <p style={muted}>Sesiones domésticas registradas: {homeEvents.length}. Las cargas manuales se incluyen; las lecturas aisladas no.</p>
       {homeFetched && (homeEvents.length ? <div style={{overflowX:'auto'}}><table style={{width:'100%',borderCollapse:'collapse',textAlign:'left'}}><thead><tr>{['Fecha','Lugar','Energía','Acciones'].map(label => <th key={label} scope="col" style={{padding:'10px 8px',borderBottom:'1px solid #475569'}}>{label}</th>)}</tr></thead><tbody>{homeEvents.map(event => <tr key={event.id}><td style={{padding:'10px 8px',borderBottom:'1px solid #24402b'}}>{date(event.started_at)}</td><td>Casa</td><td>{num(event.energy_kwh === null ? null : Number(event.energy_kwh), 'kWh')}</td><td>{deleteCandidate === event.id ? <span><button type="button" style={button} disabled={homeLoading} onClick={() => void deleteHomeRecord(event.id)}>Confirmar eliminación</button> <button type="button" style={button} onClick={() => setDeleteCandidate(null)}>Cancelar</button></span> : <button type="button" style={button} disabled={homeLoading} onClick={() => setDeleteCandidate(event.id)}>Eliminar</button>}</td></tr>)}</tbody></table></div> : <p style={muted}>Aún no hay cargas domésticas registradas para este vehículo.</p>)}
     </section>

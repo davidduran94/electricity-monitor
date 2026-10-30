@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     const sql = database();
     const rows = await sql`SELECT id, started_at, ended_at, energy_kwh, cost_amount, currency, cost_is_estimate
       FROM electricity_charging_sessions WHERE vehicle_id = ${key} AND source = 'home'
-      ORDER BY started_at DESC LIMIT 100`;
+      ORDER BY started_at DESC LIMIT 1000`;
     return NextResponse.json({ events: rows }, { headers });
   } catch {
     return NextResponse.json({ message: 'No se pudo consultar Neon.' }, { status: 502, headers });

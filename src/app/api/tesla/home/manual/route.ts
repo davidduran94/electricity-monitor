@@ -45,3 +45,31 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'No se pudo guardar la carga manual en Neon.' }, { status: 502, headers });
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  if (request.headers.get('origin') !== request.nextUrl.origin)
+    return NextResponse.json({ message: 'Origen no autorizado.' }, { status: 403, headers });
+  const tokens = await getTeslaTokens();
+  if (!tokens || tokens.expires_at <= Date.now())
+    return NextResponse.json({ message: 'Vuelve a conectar Tesla.' }, { status: 401, headers });
+  try {
+    const body: unknown = await request.json();
+    if (!body || typeof body !== 'object')
+      return NextResponse.json({ message: 'Datos inválidos.' }, { status: 400, headers });
+    const { vehicleId, recordId } = body as Record<string, unknown>;
+    if (typeof vehicleId !== 'string' || !/^\d{1,30}$/.test(vehicleId) ||
+        typeof recordId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f-]{27,36}$/i.test(recordId))
+      return NextResponse.json({ message: 'Registro o vehículo inválido.' }, { status: 400, headers });
+    const vehicles = await teslaRequest('/api/1/vehicles', tokens.access_token);
+    const vehicle = vehicles.response?.find((v: { id_s?: string; id?: number }) => String(v.id_s ?? v.id) === vehicleId);
+    if (!vehicle?.vin) return NextResponse.json({ message: 'Vehículo no autorizado.' }, { status: 403, headers });
+    const sql = database();
+    const rows = await sql`DELETE FROM electricity_charging_sessions
+      WHERE id = ${recordId}::uuid AND vehicle_id = ${vehicleKey(vehicle.vin)} AND source = 'home'
+      RETURNING id`;
+    if (!rows.length) return NextResponse.json({ message: 'Registro no encontrado.' }, { status: 404, headers });
+    return NextResponse.json({ deleted: true }, { headers });
+  } catch {
+    return NextResponse.json({ message: 'No se pudo eliminar el registro en Neon.' }, { status: 502, headers });
+  }
+}

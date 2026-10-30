@@ -5,7 +5,7 @@ import type { ChargingEvent } from '../lib/tesla-charging';
 
 type Vehicle = { id: string; displayName: string; vinLast4?: string };
 type Snapshot = { batteryLevel: number | null; chargingState: string | null; chargeLimit: number | null; energyAddedKwh: number | null; powerKw: number | null; batteryRangeKm: number | null; timestamp: string | null };
-type HistoryResult = { events?: ChargingEvent[]; hasMore?: boolean; requiresConsent?: boolean; message?: string; diagnosticCode?: string };
+type HistoryResult = { events?: ChargingEvent[]; hasMore?: boolean; requiresConsent?: boolean; message?: string; diagnosticCode?: string; providerCode?: string | null };
 const panel = { background: '#101813', border: '1px solid #24402b', borderRadius: 14, padding: 20, minWidth: 0 };
 const muted = { color: '#a3b7a6', fontSize: 13 };
 const button = { padding: '10px 14px', borderRadius: 8, border: '1px solid #475569', background: '#080d09', color: '#e7ffe9', cursor: 'pointer' };
@@ -122,7 +122,7 @@ export default function TeslaInsights({ vehicles }: { vehicles: Vehicle[] }) {
         <button type="button" style={button} disabled={historyLoading || !selected} onClick={() => loadHistory(1)}>{historyLoading ? 'Consultando…' : 'Consultar historial'}</button>
       </div>
       <p style={muted}>Muestra las sesiones que Tesla devuelve para tu cuenta. No representa un historial completo de cargas en casa ni el consumo al conducir.</p>
-      {history?.message && <p role="status">{history.message}{history.diagnosticCode ? ` (Código: ${history.diagnosticCode})` : ''}</p>}
+      {history?.message && <p role="status">{history.message}{history.diagnosticCode ? ` (Código: ${history.diagnosticCode})` : ''}{history.providerCode ? ` · Tesla: ${history.providerCode}` : ''}</p>}
       {(!history || history.requiresConsent) && <div>
         <a href="/api/tesla/connect?history=1" style={{ ...button, display: 'inline-block', textDecoration: 'none', background: '#15803d' }}>Autorizar historial en Tesla</a>
         <p style={muted}>Tesla agrupa el historial y los controles de carga en un mismo permiso. Este dashboard solo realiza consultas. Si Tesla rechaza el permiso, debe estar habilitado para tu aplicación en Tesla Developer.</p>

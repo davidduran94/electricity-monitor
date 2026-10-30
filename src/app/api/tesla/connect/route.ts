@@ -6,7 +6,8 @@ export async function GET(request: NextRequest) {
   const clientId = process.env.TESLA_CLIENT_ID;
   if (!clientId || !process.env.TESLA_CLIENT_SECRET || !process.env.TESLA_SESSION_SECRET)
     return NextResponse.json({ error: 'Tesla OAuth no está configurado.' }, { status: 503 });
-  const requestedScopes = request.nextUrl.searchParams.get('history') === '1' ? `${scopes} vehicle_charging_cmds` : scopes;
+  // Always request charging permission so the main Connect button supports history.
+  const requestedScopes = `${scopes} vehicle_charging_cmds`;
   const state = randomBytes(24).toString('hex');
   const url = new URL('https://auth.tesla.com/oauth2/v3/authorize');
   for (const [key, value] of Object.entries({ response_type: 'code', client_id: clientId, redirect_uri: callbackUrl, scope: requestedScopes, state, prompt_missing_scopes: 'true', require_requested_scopes: 'true' }))

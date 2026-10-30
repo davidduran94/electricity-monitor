@@ -69,6 +69,10 @@ export default function Home() {
     teslaCost: charges.reduce((s, x) => s + x.cost, 0)
   }), [bills, charges]);
   const chartData = [...bills].sort((a, b) => a.from.localeCompare(b.from)).map(x => ({ name: x.from, 'Consumo CFE (kWh)': x.kwh, 'Pago CFE (MXN)': x.mxn }));
+  async function logout() {
+    const response = await fetch('/api/auth/logout', { method: 'POST' });
+    if (response.ok) window.location.assign('/login');
+  }
   const exportData = () => {
     const blob = new Blob([JSON.stringify({ bills, charges, exportedAt: new Date().toISOString() }, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -77,7 +81,10 @@ export default function Home() {
   return <main style={{ maxWidth: 1100, margin: 'auto', padding: '28px 16px', color:'#e7ffe9' }}>
     <header style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 16, marginBottom: 28 }}>
       <div><h1 style={{ margin: 0 }}>⚡ Electricity Monitor</h1><p style={{ color: '#a3b7a6' }}>Casa · Tesla Model 3 · CFE</p></div>
-      <button onClick={exportData} style={{ ...inputStyle, width: 'auto', cursor: 'pointer' }}>⬇ Exportar respaldo JSON</button>
+      <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+        <button onClick={exportData} style={{ ...inputStyle, width: 'auto', cursor: 'pointer' }}>⬇ Exportar respaldo JSON</button>
+        <button onClick={logout} style={{ ...inputStyle, width: 'auto', cursor: 'pointer', borderColor:'#7f1d1d' }}>Cerrar sesión</button>
+      </div>
     </header>
     {tesla.connected && !tesla.expired && <p style={{fontSize:13,color:'#a3b7a6'}}>¿El historial devuelve HTTP 400? <a href="/api/tesla/connect?history=1" style={{color:'#f87171'}}>Volver a autorizar Tesla con permiso de carga</a>. Tesla solicitará confirmar los permisos.</p>}
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 290px), 1fr))',gap:16,marginBottom:22,alignItems:'start'}}>

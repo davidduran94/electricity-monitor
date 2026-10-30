@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     if (!vehicle?.vin) return NextResponse.json({ message: 'Vehículo no autorizado.' }, { status: 403, headers });
     // Avoid unverified sort fields: Tesla can reject the entire request with HTTP 400.
     // Query the documented charging history with basic pagination only.
-    const params = new URLSearchParams({ pageNo: page, pageSize: '20' });
+    const params = new URLSearchParams({ vin: vehicle.vin, pageNo: page, pageSize: '20' });
     const data = await teslaRequest(`/api/1/dx/charging/history?${params}`, tokens.access_token);
     return NextResponse.json({ ...chargingHistory(data), page: Number(page) }, { headers });
   } catch (error) {

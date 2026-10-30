@@ -31,6 +31,23 @@ export default function TeslaInsights({ vehicles }: { vehicles: Vehicle[] }) {
   const [homeEvents, setHomeEvents] = useState<Array<{id:string;started_at:string;ended_at:string|null;energy_kwh:number|null}>>([]);
   const [homeMessage, setHomeMessage] = useState('');
   const [homeLoading, setHomeLoading] = useState(false);
+  const [manualDate, setManualDate] = useState(() => new Date().toLocaleDateString('en-CA'));
+  const [manualEnergy, setManualEnergy] = useState('');
+  async function saveManual(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const energyKwh = Number(manualEnergy);
+    if (!selected || !manualDate || !Number.isFinite(energyKwh) || energyKwh <= 0) { setHomeMessage('Ingresa una fecha y kWh válidos.'); return; }
+    setHomeLoading(true);
+    try {
+      const res = await fetch('/api/tesla/home/manual', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vehicleId: selected, date: manualDate, location: 'home', energyKwh }) });
+      const data = await res.json();
+      if (!res.ok) { setHomeMessage(data.message || 'No se pudo guardar.'); return; }
+      setManualEnergy('');
+      await loadHome();
+      setHomeMessage('Carga manual guardada correctamente.');
+    } catch { setHomeMessage('No se pudo guardar la carga manual.'); }
+    finally { setHomeLoading(false); }
+  }
   async function loadHome() {
     if (!selected) return;
     setHomeLoading(true);
@@ -109,12 +126,18 @@ export default function TeslaInsights({ vehicles }: { vehicles: Vehicle[] }) {
     <section style={panel} aria-labelledby="tesla-home-heading">
       <h2 id="tesla-home-heading"><BatteryCharging color="#4ade80" aria-hidden /> Cargas en casa · Neon</h2>
       <p style={muted}>Confirma que el vehículo está cargando en casa antes de registrar una lectura. Una lectura no equivale a una sesión terminada; las sesiones automáticas aún requieren monitoreo continuo.</p>
+      <form onSubmit={saveManual} style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'end', marginBottom: 18 }}>
+        <label>Fecha<br/><input aria-label="Fecha de carga" type="date" required value={manualDate} max={new Date().toLocaleDateString('en-CA')} onChange={e => setManualDate(e.target.value)} style={button} /></label>
+        <label>Lugar<br/><select aria-label="Lugar de carga" value="home" disabled style={button}><option value="home">Casa</option></select></label>
+        <label>Energía (kWh)<br/><input aria-label="Energía en kWh" type="number" min="0.01" max="300" step="0.01" required value={manualEnergy} onChange={e => setManualEnergy(e.target.value)} placeholder="Ej. 24.5" style={{ ...button, width: 135 }} /></label>
+        <button type="submit" style={{ ...button, background: '#15803d' }} disabled={homeLoading || !selected}>{homeLoading ? 'Guardando…' : 'Guardar carga manual'}</button>
+      </form>
       <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
         <button type="button" style={button} disabled={homeLoading} onClick={recordHome}>Registrar lectura en casa</button>
         <button type="button" style={button} disabled={homeLoading} onClick={loadHome}>Consultar registros Neon</button>
       </div>
       {homeMessage && <p role="status">{homeMessage}</p>}
-      <p style={muted}>Sesiones domésticas completas registradas: {homeEvents.length}. Las lecturas aisladas todavía no se contabilizan como sesiones.</p>
+      <p style={muted}>Sesiones domésticas completas registradas: {homeEvents.length}. Las lecturas aisladas todavía no se contabilizan como sesiones. Las cargas manuales sí se incluyen.</p>
     </section>
     <section style={panel} aria-labelledby="tesla-history-heading">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>

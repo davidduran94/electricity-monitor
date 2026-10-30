@@ -17,7 +17,27 @@ export async function GET(request: NextRequest) {
     // Avoid unverified sort fields: Tesla can reject the entire request with HTTP 400.
     // Query the documented charging history with basic pagination only.
     const params = new URLSearchParams({ vin: vehicle.vin, pageNo: page, pageSize: '20' });
-    const data = await teslaRequest(`/api/1/dx/charging/history?${params}`, tokens.access_token);
+    const endpoint = new URL(`/api/1/dx/charging/history?${params}`, process.env.TESLA_FLEET_API_BASE_URL || 'https://fleet-api.prd.na.vn.cloud.tesla.com');
+    const upstream = await fetch(endpoint, {
+      headers: { Authorization: `Bearer ${tokens.access_token}` },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(12000)
+    });
+    if (!upstream.ok) {
+      // Tesla may provide a structured error code; never return raw upstream text.
+      let detail: unknown;
+      try { detail = await upstream.json(); } catch { detail = null; }
+      const body = detail && typeof detail === 'object' ? detail as Record<string, unknown> : {};
+      const nested = body.error && typeof body.error === 'object' ? body.error as Record<string, unknown> : {};
+      const code = [body.error_code, body.code, nested.code].find(v => typeof v === 'string' && /^[a-zA-Z0-9_-]{1,64}$/.test(v as string));
+      console.error('Tesla history upstream failure', { status: upstream.status, providerCode: code || 'not_provided' });
+      return NextResponse.json({
+        message: upstream.status === 400 ? 'Tesla rechazó la consulta de historial. El diagnóstico ampliado está disponible.' : 'Tesla no pudo devolver el historial.',
+        diagnosticCode: `TESLA_HISTORY_HTTP_${upstream.status}`,
+        providerCode: code || null
+      }, { status: upstream.status === 401 ? 401 : 502, headers });
+    }
+    const data = await upstream.json();
     return NextResponse.json({ ...chargingHistory(data), page: Number(page) }, { headers });
   } catch (error) {
     const status = error instanceof Error ? /HTTP (\d{3})/.exec(error.message)?.[1] : undefined;

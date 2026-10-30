@@ -16,7 +16,7 @@ function price(event: ChargingEvent) {
   if (event.amount === null || !event.currency || !/^[A-Z]{3}$/.test(event.currency)) return 'Importe no disponible';
   try { return new Intl.NumberFormat('es-MX', { style: 'currency', currency: event.currency }).format(event.amount); } catch { return 'Moneda no disponible'; }
 }
-export default function TeslaInsights({ vehicles }: { vehicles: Vehicle[] }) {
+export default function TeslaInsights({ vehicles, cfePeriods }: { vehicles: Vehicle[]; cfePeriods: Array<{id:string;from:string;to:string}> }) {
   const [preferredVehicle, setPreferredVehicle] = useState('');
   // Vehicles arrive after the session request. Resolve the default from current props,
   // so the visible option and the identifier sent to both APIs always agree.
@@ -45,6 +45,14 @@ export default function TeslaInsights({ vehicles }: { vehicles: Vehicle[] }) {
     finally { setHomeLoading(false); }
   }
   const [homeMessage, setHomeMessage] = useState('');
+  const cfeTotals = [...cfePeriods].sort((a,b) => b.from.localeCompare(a.from)).map(period => {
+    const records = homeEvents.filter(event => {
+      // CFE receipt dates are inclusive; use the Mexico-local calendar date.
+      const localDate = new Intl.DateTimeFormat('en-CA', {timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(event.started_at));
+      return localDate >= period.from && localDate <= period.to;
+    });
+    return { ...period, count: records.length, kwh: records.reduce((sum, event) => sum + Number(event.energy_kwh || 0), 0) };
+  });
   const [homeLoading, setHomeLoading] = useState(false);
   const [manualDate, setManualDate] = useState(() => new Date().toLocaleDateString('en-CA'));
   const [manualEnergy, setManualEnergy] = useState('');
@@ -156,6 +164,9 @@ export default function TeslaInsights({ vehicles }: { vehicles: Vehicle[] }) {
         <button type="button" style={button} disabled={homeLoading} onClick={loadHome}>Consultar registros Neon</button>
       </div>
       {homeMessage && <p role="status">{homeMessage}</p>}
+      <h3 style={{marginTop:20}}>Energía cargada por periodo de CFE</h3>
+      <p style={muted}>Totales de las sesiones domésticas registradas en Neon, según la fecha de cada carga. No incluyen lecturas aisladas ni cargas guardadas solo en este navegador. Los periodos se toman de tus recibos CFE registrados.</p>
+      {!cfePeriods.length ? <p style={muted}>Agrega un recibo CFE con fechas de inicio y fin para ver los totales por periodo.</p> : <div style={{overflowX:'auto'}}><table style={{width:'100%',borderCollapse:'collapse',textAlign:'left'}}><thead><tr>{['Periodo CFE','Cargas','Total cargado'].map(label => <th key={label} style={{padding:'10px 8px',borderBottom:'1px solid #475569'}}>{label}</th>)}</tr></thead><tbody>{cfeTotals.map(period => <tr key={period.id}><td style={{padding:'10px 8px',borderBottom:'1px solid #24402b'}}>{period.from} a {period.to}</td><td>{homeFetched ? period.count : '—'}</td><td><strong>{homeFetched ? num(period.kwh,'kWh') : 'Pendiente de consulta'}</strong></td></tr>)}</tbody></table></div>}
       <p style={muted}>Sesiones domésticas registradas: {homeEvents.length}. Las cargas manuales se incluyen; las lecturas aisladas no.</p>
       {homeFetched && (homeEvents.length ? <div style={{overflowX:'auto'}}><table style={{width:'100%',borderCollapse:'collapse',textAlign:'left'}}><thead><tr>{['Fecha','Lugar','Energía','Acciones'].map(label => <th key={label} scope="col" style={{padding:'10px 8px',borderBottom:'1px solid #475569'}}>{label}</th>)}</tr></thead><tbody>{homeEvents.map(event => <tr key={event.id}><td style={{padding:'10px 8px',borderBottom:'1px solid #24402b'}}>{date(event.started_at)}</td><td>Casa</td><td>{num(event.energy_kwh === null ? null : Number(event.energy_kwh), 'kWh')}</td><td>{deleteCandidate === event.id ? <span><button type="button" style={button} disabled={homeLoading} onClick={() => void deleteHomeRecord(event.id)}>Confirmar eliminación</button> <button type="button" style={button} onClick={() => setDeleteCandidate(null)}>Cancelar</button></span> : <button type="button" style={button} disabled={homeLoading} onClick={() => setDeleteCandidate(event.id)}>Eliminar</button>}</td></tr>)}</tbody></table></div> : <p style={muted}>Aún no hay cargas domésticas registradas para este vehículo.</p>)}
     </section>

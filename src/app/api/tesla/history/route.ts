@@ -20,11 +20,16 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     const status = error instanceof Error ? /HTTP (\d{3})/.exec(error.message)?.[1] : undefined;
     const requiresConsent = status === '403';
+    const diagnosticCode = status ? `TESLA_HISTORY_HTTP_${status}` : error instanceof Error && error.name === 'TimeoutError' ? 'TESLA_HISTORY_TIMEOUT' : error instanceof Error && error.message === 'Unsupported Tesla charging history format' ? 'TESLA_HISTORY_FORMAT' : 'TESLA_HISTORY_UNKNOWN';
     const message = requiresConsent ? 'Tesla requiere permiso de historial de carga. Autoriza el acceso para consultar tus sesiones.'
       : status === '401' ? 'La sesión Tesla caducó. Vuelve a conectar tu cuenta.'
       : status === '429' ? 'Tesla limitó las consultas. Espera unos minutos antes de actualizar.'
       : error instanceof Error && error.message === 'Unsupported Tesla charging history format' ? 'Tesla devolvió un formato de historial que todavía no podemos mostrar. No se han generado registros estimados.'
-      : 'No se pudo recuperar el historial de Tesla. Intenta actualizar más tarde.';
-    return NextResponse.json({ message, requiresConsent }, { status: status === '401' ? 401 : requiresConsent ? 403 : 502, headers });
+      : status === '404' ? 'El endpoint de historial no está disponible para esta cuenta o región de Tesla.'
+      : status === '400' ? 'Tesla rechazó los parámetros de la consulta de historial.'
+      : status === '502' || status === '503' || status === '504' ? 'El servicio de historial de Tesla no está disponible temporalmente.'
+      : 'No se pudo recuperar el historial de Tesla. Consulta el código de diagnóstico.';
+    console.error('Tesla charging history request failed', { diagnosticCode });
+    return NextResponse.json({ message, requiresConsent, diagnosticCode }, { status: status === '401' ? 401 : requiresConsent ? 403 : 502, headers });
   }
 }

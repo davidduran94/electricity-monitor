@@ -71,7 +71,7 @@ export default function Home() {
   const chartData = [...bills].sort((a, b) => a.from.localeCompare(b.from)).map(x => ({ name: x.from, 'Consumo CFE (kWh)': x.kwh, 'Pago CFE (MXN)': x.mxn }));
   async function logout() {
     const response = await fetch('/api/auth/logout', { method: 'POST' });
-    if (response.ok) window.location.assign('/login');
+    if (response.ok) window.location.assign('/acceso');
   }
   const exportData = () => {
     const blob = new Blob([JSON.stringify({ bills, charges, exportedAt: new Date().toISOString() }, null, 2)], { type: 'application/json' });

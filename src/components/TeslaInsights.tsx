@@ -145,17 +145,17 @@ export default function TeslaInsights({ vehicles, cfePeriods }: { vehicles: Vehi
   }
   if (!vehicles.length) return null;
   return <div style={{ display: 'contents' }}>
-    <div style={{gridColumn:"1 / -1"}}>
-      <label htmlFor="tesla-vehicle">Vehículo para las consultas</label>{' '}
-      <select id="tesla-vehicle" value={selected} disabled={chargeLoading || historyLoading} onChange={e => setPreferredVehicle(e.target.value)} style={{ ...button, maxWidth: '100%' }}>
-        {vehicles.map(v => <option key={v.id} value={v.id}>{v.displayName} · {v.vinLast4 || '—'}</option>)}
-      </select>
-    </div>
     <section style={{...panel, width:'100%', boxSizing:'border-box'}} aria-labelledby="tesla-charge-heading">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <h2 id="tesla-charge-heading" style={{ display: 'flex', gap: 10, alignItems: 'center', margin: 0 }}><BatteryCharging color="#f87171" aria-hidden /> Última lectura de carga</h2>
         <button type="button" style={button} disabled={chargeLoading || !selected} onClick={loadCharge}><RefreshCw size={14} aria-hidden /> {chargeLoading ? 'Consultando…' : 'Consultar carga'}</button>
       </div>
+    <div style={{marginBottom:14}}>
+      <label htmlFor="tesla-vehicle">Vehículo para las consultas</label>{' '}
+      <select id="tesla-vehicle" value={selected} disabled={chargeLoading || historyLoading} onChange={e => setPreferredVehicle(e.target.value)} style={{ ...button, maxWidth: '100%' }}>
+        {vehicles.map(v => <option key={v.id} value={v.id}>{v.displayName} · {v.vinLast4 || '—'}</option>)}
+      </select>
+    </div>
       <p style={muted}>Consulta la última lectura enviada a Tesla. Puede tener varias horas de antigüedad.</p>
       {chargeMessage && <p role="status">{chargeMessage}</p>}
       {snapshot ? <>

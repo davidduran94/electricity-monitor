@@ -87,7 +87,7 @@ export default function Home() {
       </div>
     </header>
     {tesla.connected && !tesla.expired && <p style={{fontSize:13,color:'#a3b7a6'}}>¿El historial devuelve HTTP 400? <a href="/api/tesla/connect?history=1" style={{color:'#f87171'}}>Volver a autorizar Tesla con permiso de carga</a>. Tesla solicitará confirmar los permisos.</p>}
-    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 290px), 1fr))',gap:16,marginBottom:22,alignItems:'start'}}>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 290px), 1fr))',gap:16,marginBottom:22,alignItems:'stretch'}}>
     <section style={{ ...panel, minWidth: 0, borderColor: '#7f1d1d' }}>
       <h2 style={{display:'flex',alignItems:'center',gap:10}}><CarFront color='#f87171' /> Conexión Tesla Fleet</h2>
       <p>{tesla.connected && !tesla.expired ? 'Cuenta Tesla conectada' : 'Conecta tu Tesla para consultar información de tu vehículo.'}</p>

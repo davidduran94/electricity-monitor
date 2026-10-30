@@ -195,14 +195,14 @@ export default function TeslaInsights({ vehicles, cfePeriods }: { vehicles: Vehi
         </div>
       </> : <p role="status">Tesla no devolvió sesiones en esta página. Esto no significa que no hayas cargado el coche en casa.</p>)}
     </section>
-    <section style={{...panel,gridColumn:'1 / -1'}} aria-labelledby="tesla-home-heading">
-      <h2 id="tesla-home-heading"><BatteryCharging color="#f87171" aria-hidden /> Cargas en casa · Neon</h2>
+    <section style={{...panel,gridColumn:'1 / -1',borderColor:'#2563eb'}} aria-labelledby="tesla-home-heading">
+      <h2 id="tesla-home-heading"><BatteryCharging color="#60a5fa" aria-hidden /> Cargas en casa · Neon</h2>
       <p style={muted}>Confirma que el vehículo está cargando en casa antes de registrar una lectura. Una lectura no equivale a una sesión terminada; las sesiones automáticas aún requieren monitoreo continuo.</p>
       <form onSubmit={saveManual} style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'end', marginBottom: 18 }}>
         <label>Fecha<br/><input aria-label="Fecha de carga" type="date" required value={manualDate} max={new Date().toLocaleDateString('en-CA')} onChange={e => setManualDate(e.target.value)} style={button} /></label>
         <label>Lugar<br/><select aria-label="Lugar de carga" value="home" disabled style={button}><option value="home">Casa</option></select></label>
         <label>Energía (kWh)<br/><input aria-label="Energía en kWh" type="number" min="0.01" max="300" step="0.01" required value={manualEnergy} onChange={e => setManualEnergy(e.target.value)} placeholder="Ej. 24.5" style={{ ...button, width: 135 }} /></label>
-        <button type="submit" style={{ ...button, background: '#b91c1c' }} disabled={homeLoading || !selected}>{homeLoading ? 'Guardando…' : 'Guardar carga manual'}</button>
+        <button type="submit" style={{ ...button, background: '#1d4ed8' }} disabled={homeLoading || !selected}>{homeLoading ? 'Guardando…' : 'Guardar carga manual'}</button>
       </form>
       <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
         <button type="button" style={button} disabled={homeLoading} onClick={recordHome}>Registrar lectura en casa</button>
@@ -214,10 +214,10 @@ export default function TeslaInsights({ vehicles, cfePeriods }: { vehicles: Vehi
       {!cfePeriods.length ? <p style={muted}>Registra al menos un recibo CFE para visualizar el comparativo.</p> : !homeFetched ? <p style={muted}>Consultando las sesiones en Neon para comparar los periodos…</p> : <>
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(min(100%, 380px), 1fr))',gap:20}}>
         <div style={{height:280,width:'100%',minWidth:0}} role="img" aria-label="Comparación por periodo del consumo CFE y las cargas Tesla en kilowatt-hora">
-          <ResponsiveContainer width="100%" height="100%"><BarChart data={[...cfeTotals].reverse().map(period => ({period:period.from, 'CFE kWh':period.kwh,'Tesla Neon kWh':period.neonKwh}))} margin={{top:8,right:12,left:0,bottom:8}}><CartesianGrid stroke="#374151" strokeDasharray="3 3"/><XAxis dataKey="period" stroke="#e5e7eb" fontSize={11}/><YAxis stroke="#e5e7eb"/><Tooltip/><Legend/><Bar dataKey="CFE kWh" fill="#f87171"/><Bar dataKey="Tesla Neon kWh" fill="#fbbf24"/></BarChart></ResponsiveContainer>
+          <ResponsiveContainer width="100%" height="100%"><BarChart data={[...cfeTotals].reverse().map(period => ({period:period.from, 'CFE kWh':period.kwh,'Tesla Neon kWh':period.neonKwh}))} margin={{top:8,right:12,left:0,bottom:8}}><CartesianGrid stroke="#374151" strokeDasharray="3 3"/><XAxis dataKey="period" stroke="#e5e7eb" fontSize={11}/><YAxis stroke="#e5e7eb"/><Tooltip/><Legend/><Bar dataKey="CFE kWh" fill="#2563eb"/><Bar dataKey="Tesla Neon kWh" fill="#60a5fa"/></BarChart></ResponsiveContainer>
         </div>
         <div style={{height:280,width:'100%',minWidth:0}} role="img" aria-label="Comparación por periodo del pago CFE y el costo estimado Tesla en pesos mexicanos">
-          <ResponsiveContainer width="100%" height="100%"><BarChart data={[...cfeTotals].reverse().map(period => ({period:period.from,'Pago CFE MXN':period.mxn,'Tesla estimado MXN':Number((period.neonKwh*4).toFixed(2))}))} margin={{top:8,right:12,left:0,bottom:8}}><CartesianGrid stroke="#374151" strokeDasharray="3 3"/><XAxis dataKey="period" stroke="#e5e7eb" fontSize={11}/><YAxis stroke="#e5e7eb"/><Tooltip formatter={(value) => `${Number(value).toFixed(2)} MXN`}/><Legend/><Bar dataKey="Pago CFE MXN" fill="#f87171"/><Bar dataKey="Tesla estimado MXN" fill="#fbbf24"/></BarChart></ResponsiveContainer>
+          <ResponsiveContainer width="100%" height="100%"><BarChart data={[...cfeTotals].reverse().map(period => ({period:period.from,'Pago CFE MXN':period.mxn,'Tesla estimado MXN':Number((period.neonKwh*4).toFixed(2))}))} margin={{top:8,right:12,left:0,bottom:8}}><CartesianGrid stroke="#374151" strokeDasharray="3 3"/><XAxis dataKey="period" stroke="#e5e7eb" fontSize={11}/><YAxis stroke="#e5e7eb"/><Tooltip formatter={(value) => `${Number(value).toFixed(2)} MXN`}/><Legend/><Bar dataKey="Pago CFE MXN" fill="#2563eb"/><Bar dataKey="Tesla estimado MXN" fill="#60a5fa"/></BarChart></ResponsiveContainer>
         </div>
         </div>
         <div style={{overflowX:'auto'}}><table style={{width:'100%',borderCollapse:'collapse',textAlign:'left'}}><thead><tr>{['Periodo','CFE kWh','CFE MXN','Neon kWh','Tesla estimado MXN'].map(label=><th key={label} style={{padding:'10px 8px',borderBottom:'1px solid #475569'}}>{label}</th>)}</tr></thead><tbody>{cfeTotals.map(period=><tr key={period.id}><td style={{padding:'10px 8px',borderBottom:'1px solid #24402b'}}>{period.from} a {period.to}</td><td>{num(period.kwh,'kWh')}</td><td>{num(period.mxn,'MXN')}</td><td>{num(period.neonKwh,'kWh')}</td><td>{num(period.neonKwh*4,'MXN')}</td></tr>)}</tbody></table></div>

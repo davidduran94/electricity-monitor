@@ -29,6 +29,7 @@ export default function TeslaInsights({ vehicles }: { vehicles: Vehicle[] }) {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [homeEvents, setHomeEvents] = useState<Array<{id:string;started_at:string;ended_at:string|null;energy_kwh:number|null}>>([]);
+  const [homeFetched, setHomeFetched] = useState(false);
   const [homeMessage, setHomeMessage] = useState('');
   const [homeLoading, setHomeLoading] = useState(false);
   const [manualDate, setManualDate] = useState(() => new Date().toLocaleDateString('en-CA'));
@@ -49,12 +50,14 @@ export default function TeslaInsights({ vehicles }: { vehicles: Vehicle[] }) {
     finally { setHomeLoading(false); }
   }
   async function loadHome() {
-    if (!selected) return;
+    const id = selected;
+    if (!id) return;
     setHomeLoading(true);
     try {
-      const res = await fetch(`/api/tesla/home?vehicleId=${encodeURIComponent(selected)}`, {cache:'no-store'});
+      const res = await fetch(`/api/tesla/home?vehicleId=${encodeURIComponent(id)}`, {cache:'no-store'});
       const data = await res.json();
-      if (res.ok) { setHomeEvents(data.events || []); setHomeMessage(''); }
+      if (selection.current !== id) return;
+      if (res.ok) { setHomeEvents(data.events || []); setHomeFetched(true); setHomeMessage(''); }
       else setHomeMessage(data.message || 'No se pudo consultar Neon.');
     } catch { setHomeMessage('No se pudo consultar Neon.'); }
     finally { setHomeLoading(false); }
@@ -74,6 +77,8 @@ export default function TeslaInsights({ vehicles }: { vehicles: Vehicle[] }) {
   useEffect(() => {
     selection.current = selected;
     setSnapshot(null); setChargeMessage(''); setHistory(null); setPage(1);
+    setHomeEvents([]); setHomeFetched(false); setHomeMessage('');
+    if (selected) void loadHome();
   }, [selected]);
   async function loadCharge() {
     const id = selected;
@@ -137,7 +142,8 @@ export default function TeslaInsights({ vehicles }: { vehicles: Vehicle[] }) {
         <button type="button" style={button} disabled={homeLoading} onClick={loadHome}>Consultar registros Neon</button>
       </div>
       {homeMessage && <p role="status">{homeMessage}</p>}
-      <p style={muted}>Sesiones domésticas completas registradas: {homeEvents.length}. Las lecturas aisladas todavía no se contabilizan como sesiones. Las cargas manuales sí se incluyen.</p>
+      <p style={muted}>Sesiones domésticas registradas: {homeEvents.length}. Las cargas manuales se incluyen; las lecturas aisladas no.</p>
+      {homeFetched && (homeEvents.length ? <div style={{overflowX:'auto'}}><table style={{width:'100%',borderCollapse:'collapse',textAlign:'left'}}><thead><tr>{['Fecha','Lugar','Energía'].map(label => <th key={label} scope="col" style={{padding:'10px 8px',borderBottom:'1px solid #475569'}}>{label}</th>)}</tr></thead><tbody>{homeEvents.map(event => <tr key={event.id}><td style={{padding:'10px 8px',borderBottom:'1px solid #24402b'}}>{date(event.started_at)}</td><td>Casa</td><td>{num(event.energy_kwh === null ? null : Number(event.energy_kwh), 'kWh')}</td></tr>)}</tbody></table></div> : <p style={muted}>Aún no hay cargas domésticas registradas para este vehículo.</p>)}
     </section>
     <section style={panel} aria-labelledby="tesla-history-heading">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>

@@ -1,0 +1,26 @@
+{
+  "id": "/",
+  "name": "Electricity Monitor",
+  "short_name": "Electricity",
+  "description": "Casa, Tesla Model 3 y CFE",
+  "lang": "es",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#050906",
+  "theme_color": "#050906",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
